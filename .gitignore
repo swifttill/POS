@@ -1,0 +1,23 @@
+node_modules
+.next
+dist
+.turbo
+out
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Local env (never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Generated / runtime
+prisma/migrations
+outbox/
+public/assets/uploads/*
+!public/assets/uploads/.gitkeep
+
+# Editor / OS
+.vscode/
+.idea/

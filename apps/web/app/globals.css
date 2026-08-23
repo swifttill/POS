@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* SwiftTill brand tokens (Tailwind v4 @theme) */
+@theme {
+  --color-void: #000000;
+  --color-abyss: #05070d;
+  --color-panel: #0b0f1a;
+  --color-panel-2: #111726;
+  --color-line: #1c2433;
+  --color-electric: #2f6bff;
+  --color-cyan: #22d3ee;
+  --color-muted: #8b97ad;
+  --color-text: #e8edf7;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(47, 107, 255, 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(34, 211, 238, 0.1), transparent 55%),
+    var(--color-void);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Glow accents */
+.glow-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-panel-2), var(--color-panel-2)) padding-box,
+    linear-gradient(135deg, var(--color-electric), var(--color-cyan)) border-box;
+  box-shadow: 0 0 24px rgba(47, 107, 255, 0.25);
+}
+
+.glow-text {
+  background: linear-gradient(135deg, var(--color-electric), var(--color-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-electric), var(--color-cyan));
+  color: #001018;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.35);
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.card {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+}
+
+/* Thin scrollbars for the dark UI */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 999px;
+}

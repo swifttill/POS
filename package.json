@@ -1,0 +1,20 @@
+{
+  "name": "swift-till",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "agent": "pnpm --filter @swift-till/agent start",
+    "agent:typecheck": "pnpm --filter @swift-till/agent typecheck",
+    "db:generate": "pnpm --filter @swift-till/db generate",
+    "db:push": "pnpm --filter @swift-till/db db:push",
+    "db:seed": "pnpm --filter @swift-till/db db:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  }
+}

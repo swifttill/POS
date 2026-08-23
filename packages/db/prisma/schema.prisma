@@ -1,0 +1,262 @@
+// SwiftTill POS — data model
+// All monetary values are stored as integer paisa (1/100 of a PKR rupee)
+// to avoid floating-point rounding errors in the till.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  role      String   @default("WAITER") // ADMIN | MANAGER | WAITER
+  pinHash   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  sessions  Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+enum OrderStatus {
+  OPEN // order taken, items firing to kitchen
+  BILLED // bill presented / paid
+  CLOSED // shift-closed / reconciled
+  VOIDED
+  REFUNDED
+}
+
+enum TenderType {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum Station {
+  BAR
+  GRILL
+  FRY
+  MAIN
+  DESSERT
+  EXPO
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String   @default("SwiftTill Restaurant")
+  address     String?
+  logoUrl     String?
+  tagline     String?
+  currency    String   @default("PKR")
+  gstEnabled  Boolean  @default(false)
+  gstRate     Float    @default(0) // percentage, e.g. 16.0
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id        String      @id @default(cuid())
+  name      String
+  slug      String      @unique
+  sortOrder Int         @default(0)
+  imageUrl  String?
+  parent    Category?   @relation("CategoryTree", fields: [parentId], references: [id])
+  parentId  String?
+  children  Category[]  @relation("CategoryTree")
+  items     MenuItem[]
+
+  @@index([parentId])
+}
+
+model MenuItem {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  price        Int // paisa
+  imageUrl     String?
+  available    Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  printerStation Station  @default(MAIN)
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  modifierGroups ModifierGroup[]
+  cartItems    OrderItem[]
+  dealItems    DealItem[]
+
+  @@index([categoryId])
+}
+
+model ModifierGroup {
+  id         String     @id @default(cuid())
+  name       String
+  minSelect  Int        @default(0)
+  maxSelect  Int        @default(1)
+  required   Boolean    @default(false)
+  sortOrder  Int        @default(0)
+  menuItemId String
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifiers  Modifier[]
+
+  @@index([menuItemId])
+}
+
+model Modifier {
+  id             String        @id @default(cuid())
+  name           String
+  priceDelta     Int           @default(0) // paisa, can be negative
+  sortOrder      Int           @default(0)
+  modifierGroupId String
+  modifierGroup  ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@index([modifierGroupId])
+}
+
+// Deals & combos ---------------------------------------------------------------
+enum DealType {
+  BOGO // buy one get one
+  BUNDLE // fixed-price package
+  PERCENT // percentage discount
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  name        String
+  type        DealType
+  // BUNDLE: overridden package price (paisa). PERCENT: discount rate.
+  value       Int      @default(0)
+  active      Boolean  @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  items       DealItem[]
+}
+
+model DealItem {
+  id        String  @id @default(cuid())
+  dealId    String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem  MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity  Int     @default(1)
+
+  @@index([dealId])
+  @@index([menuItemId])
+}
+
+// Floor & tables ---------------------------------------------------------------
+model RestaurantTable {
+  id       String   @id @default(cuid())
+  number   Int      @unique
+  name     String?
+  seats    Int      @default(2)
+  zone     String? // e.g. "Indoor", "Patio"
+  posX     Int      @default(0) // floor-plan coordinates
+  posY     Int      @default(0)
+  orders   Order[]
+
+  @@index([zone])
+}
+
+// Orders -----------------------------------------------------------------------
+model Order {
+  id             String      @id @default(cuid())
+  type           OrderType
+  status         OrderStatus @default(OPEN)
+  tableId        String?
+  table          RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  pax            Int? // guest count for dine-in
+  waiterName     String?
+  customerName   String?
+  customerPhone  String?
+  customerAddress String?
+  subtotal       Int         @default(0) // paisa (after discount, pre-tax)
+  tax            Int         @default(0) // paisa
+  total          Int         @default(0) // paisa
+  discountPaisa  Int         @default(0) // paisa, manager-approved discount
+  discountReason String?
+  discountBy     String? // manager name/role who approved
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  billedAt       DateTime?
+  closedAt       DateTime?
+  kotPrinted     Boolean   @default(false)
+  billPrinted    Boolean   @default(false)
+  billQueuedAt   DateTime?
+  shiftId        String?
+  shift          Shift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
+  payments       Payment[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId  String?
+  menuItem    MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  name        String // snapshot of name at sale time
+  unitPrice   Int // paisa snapshot
+  quantity    Int    @default(1)
+  seat        Int? // seat number for course firing
+  course      Int    @default(1)
+  notes       String?
+  station     Station @default(MAIN)
+  modifiers   OrderItemModifier[]
+
+  @@index([orderId])
+}
+
+model OrderItemModifier {
+  id           String     @id @default(cuid())
+  orderItemId  String
+  orderItem    OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  name         String
+  priceDelta   Int        @default(0)
+
+  @@index([orderItemId])
+}
+
+model Payment {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tender    TenderType
+  amount    Int // paisa
+  createdAt DateTime   @default(now())
+
+  @@index([orderId])
+}
+
+// Shifts & reconciliation ------------------------------------------------------
+model Shift {
+  id         String   @id @default(cuid())
+  name       String // e.g. "2026-08-23 Lunch"
+  openedAt   DateTime @default(now())
+  closedAt   DateTime?
+  openedBy   String?
+  cashStart  Int      @default(0) // paisa float
+  cashEnd    Int?
+  orders     Order[]
+
+  @@index([openedAt])
+}
