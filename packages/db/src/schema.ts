@@ -191,6 +191,7 @@ export const orders = pgTable(
   "Order",
   {
     id: text("id").primaryKey().$defaultFn(createId),
+    number: integer("number").notNull(),
     type: text("type").notNull(),
     status: text("status").notNull().default("OPEN"),
     tableId: text("tableId").references(() => restaurantTables.id, { onDelete: "set null" }),

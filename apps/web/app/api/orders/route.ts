@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, orders, orderItems, orderItemModifiers, payments, menuItems, companies, eq, inArray, desc } from "@swift-till/db";
+import { db, orders, orderItems, orderItemModifiers, payments, menuItems, companies, eq, inArray, desc, sql } from "@swift-till/db";
 import { gstAmount } from "@/lib/money";
 import { requirePermission } from "@/lib/auth";
 import type { Station } from "@/lib/types";
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
         const paid = o.payments.reduce((s, p) => s + p.amount, 0);
         return {
           id: o.id,
+          number: o.number,
           type: o.type,
           status: o.status,
           subtotal: o.subtotal,
@@ -178,9 +179,15 @@ export async function POST(request: Request) {
     }
     const finalStatus = hasPayments ? "BILLED" : "OPEN";
 
+    const [maxRow] = await db
+      .select({ m: sql<number>`max(${orders.number})` })
+      .from(orders);
+    const nextNumber = (Number(maxRow?.m ?? 0)) + 1;
+
     const [order] = await db
       .insert(orders)
       .values({
+        number: nextNumber,
         type: body.type,
         tableId: body.tableId ?? null,
         pax: body.pax ?? null,
