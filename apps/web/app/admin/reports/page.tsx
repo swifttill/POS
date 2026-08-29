@@ -72,7 +72,7 @@ export default function ReportsPage() {
 
   function exportExcel() {
     if (!data) return;
-    const rows: string[][] = [];
+    const rows: (string | number)[][] = [];
     const esc = (v: string | number) =>
       `"${String(v).replace(/"/g, '""')}"`;
     rows.push([title]);
