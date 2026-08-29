@@ -12,6 +12,7 @@ import { ModifierModal } from "@/components/ModifierModal";
 import { Cart } from "@/components/Cart";
 import { PayModal, type PayResult } from "@/components/PayModal";
 import ManagerPinModal from "@/components/ManagerPinModal";
+import { SecurityLock } from "@/components/SecurityLock";
 import { fetchMenu, createOrder } from "@/lib/api";
 import {
   enqueue,
@@ -898,6 +899,7 @@ function PendingModal({
         )}
       </div>
     </div>
+    <SecurityLock timeoutMinutes={5} />
   );
 }
 
