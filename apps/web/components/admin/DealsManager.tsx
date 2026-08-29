@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPaisa } from "@/lib/money";
-import { createDeal } from "@/lib/admin-actions";
+import { createDeal, updateDeal } from "@/lib/admin-actions";
 
 interface DealView {
   id: string;
