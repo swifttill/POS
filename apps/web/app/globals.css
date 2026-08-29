@@ -163,3 +163,16 @@ body {
   .kot-sheet { box-shadow: none !important; max-width: 100% !important; border-radius: 0 !important; }
   @page { margin: 8mm; }
 }
+
+/* Print: scoped to reports page so only the report body prints */
+@media print {
+  .reports-shell * { visibility: hidden; }
+  .reports-shell .print-area,
+  .reports-shell .print-area * { visibility: visible; }
+  .reports-shell .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

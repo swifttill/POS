@@ -46,8 +46,8 @@
 - `POST /api/orders` (no payment→OPEN/KOT; full→BILLED); `GET /api/orders?status=OPEN` (paid/editable/tableNumber/number); `PATCH /api/orders/[id]` (add/update/remove items, manager discount, payments→BILLED); `POST /api/orders/[id]/void`. Tables CRUD (manager). DB fixes earlier: added `Order.number` column + computed next; added `DEFAULT CURRENT_TIMESTAMP` to NOT-NULL timestamps.
 
 ## Active / Pending
-- **Typography wrapping** on POS (min-w-0/truncate) — NOT done.
-- **KOT print** on send-to-kitchen (no prices, station-routed) — NOT done.
+- **Typography wrapping** on POS — mostly addressed: Cart uses min-w-0/truncate; MenuItemCard restyled for light theme (removed broken `to-abyss` gradient + illegible light-tint station chips; price now `text-brand`). Cart note color `text-cyan`→`text-muted`. Residual: any other dark-theme token leftovers (`glow-text`/`glow-border`/`border-electric` now map to brand orange via globals, so on-theme).
+- **KOT print** on send-to-kitchen — DONE. `app/kot/[id]/page.tsx` server-renders station-grouped ticket (no prices, modifiers + notes), auto-prints via `components/AutoPrint.tsx`. Wired into `sendToKitchen` + `sendUpdate` (window.open /kot/[id]). Verified live: groups GRILL/FRY/COLD, no prices.
 - **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
 - **Reports suite** — EXISTS at `/admin/reports` (Analytics: date/tender/category filters, summary, tender split, category & top-item bars). May need Print/PDF/Excel export + X/Z report variants added later.
 - **Settings** — org page `/admin/company` exists; profile + searchable optional-feature toggles NOT done.
