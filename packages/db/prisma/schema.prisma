@@ -3,8 +3,9 @@
 // to avoid floating-point rounding errors in the till.
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters", "queryCompiler"]
+  provider    = "prisma-client"
+  output      = "../src/generated/prisma"
+  engineType  = "client"
 }
 
 datasource db {

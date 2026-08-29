@@ -2,7 +2,9 @@ import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PrismaClient, type Order, type OrderItem } from "@prisma/client";
+import { PrismaClient, type Order, type OrderItem } from "../../db/src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { EscPos } from "./escpos";
 import { buildBill } from "./bill";
 import { sendToPrinter } from "./printers";
@@ -29,7 +31,8 @@ if (config.databaseUrl) {
   process.env.DATABASE_URL = config.databaseUrl;
 }
 
-const prisma = new PrismaClient();
+const prismaPool = new Pool({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter: new PrismaPg(prismaPool) });
 const outboxDir = config.outboxDir || "outbox";
 
 function targetFor(station: string): string {

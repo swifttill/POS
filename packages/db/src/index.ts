@@ -2,7 +2,7 @@
 // Uses the @prisma/adapter-pg driver adapter so the same client works on
 // Node (dev/agent) AND on Cloudflare Pages (Workers runtime, nodejs_compat),
 // where Prisma's default spawned query-engine binary cannot run.
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "./generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
@@ -25,4 +25,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "@prisma/client";
+export * from "./generated/prisma/client";
