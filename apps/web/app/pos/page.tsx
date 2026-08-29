@@ -403,8 +403,9 @@ export default function FOHPage() {
   }
 
   return (
-    <div className="h-screen flex">
-      <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
+    <>
+      <div className="h-screen flex">
+        <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
         <div className="h-14 px-4 flex items-center border-b border-line">
           <Logo />
         </div>
@@ -900,6 +901,6 @@ function PendingModal({
       </div>
     </div>
     <SecurityLock timeoutMinutes={5} />
-  );
+  </>
 }
 
