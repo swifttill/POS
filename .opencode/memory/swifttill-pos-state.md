@@ -51,7 +51,7 @@
 - **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
 - **Reports suite** — DONE for current scope at `/admin/reports`: date/tender/category filters, summary, tender split, category & top-item bars, **Print / PDF** via browser print/save-as-PDF, **Export Excel** via CSV download, and report type selector for Daily/Custom, X (Shift), Z (End of Day). Verified API returns summary and page renders Print/PDF + Export Excel live.
 - **Settings** — DONE: `/admin/settings` hub with org profile, searchable feature cards (GST, KOT, bills, images, tables, reports, roles, deals, privacy) and search.
-- **Deals admin** — `admin/deals` page exists; verify image upload wired.
+- **Deals admin** — working (create, edit, enable/disable). Image upload needs DB migration for `imageUrl` column; currently wired without images.
 - **Security features** using logo/name — NOT started.
 - Admin menu/category management with image upload — DONE (MenuManager + ImageField). Tables — DONE.
 

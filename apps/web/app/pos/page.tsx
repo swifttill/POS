@@ -12,6 +12,7 @@ import { ModifierModal } from "@/components/ModifierModal";
 import { Cart } from "@/components/Cart";
 import { PayModal, type PayResult } from "@/components/PayModal";
 import ManagerPinModal from "@/components/ManagerPinModal";
+import { SecurityLock } from "@/components/SecurityLock";
 import { fetchMenu, createOrder } from "@/lib/api";
 import {
   enqueue,
@@ -402,11 +403,12 @@ export default function FOHPage() {
   }
 
   return (
-    <div className="h-screen flex">
-      <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
-        <div className="h-14 px-4 flex items-center border-b border-line">
-          <Logo />
-        </div>
+    <SecurityLock timeoutMinutes={5}>
+      <div className="h-screen flex">
+        <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
+          <div className="h-14 px-4 flex items-center border-b border-line">
+            <Logo />
+          </div>
         <nav className="p-3 space-y-1 text-sm">
           <button
             onClick={() => router.replace("/pos")}
@@ -897,6 +899,6 @@ function PendingModal({
           </div>
         )}
       </div>
-    </div>
+    </SecurityLock>
   );
 }
