@@ -1,9 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@swift-till/db";
+import {
+  db,
+  companies,
+  categories,
+  menuItems,
+  modifierGroups,
+  modifiers,
+  deals,
+  dealItems,
+  eq,
+  sql,
+} from "@swift-till/db";
 import { paisaFromRupees } from "@/lib/money";
 import { deleteImage } from "@/lib/cloudinary";
+
+async function nextSort(table: any): Promise<number> {
+  const r = await db.select({ c: sql<number>`count(*)` }).from(table);
+  return Number(r[0]?.c ?? 0) + 1;
+}
 
 export async function updateCompany(data: {
   name?: string;
@@ -14,25 +30,26 @@ export async function updateCompany(data: {
   gstRate?: number;
   logoUrl?: string;
 }) {
-  await prisma.company.upsert({
-    where: { id: "singleton" },
-    update: data,
-    create: { id: "singleton", ...data },
-  });
+  await db
+    .insert(companies)
+    .values({ id: "singleton", ...data })
+    .onConflictDoUpdate({ target: companies.id, set: data });
   revalidatePath("/admin/company");
 }
 
 export async function createCategory(name: string, slug: string) {
-  await prisma.category.create({
-    data: { name, slug, sortOrder: (await prisma.category.count()) + 1 },
+  await db.insert(categories).values({
+    name,
+    slug,
+    sortOrder: await nextSort(categories),
   });
   revalidatePath("/admin/menu");
 }
 
 export async function deleteCategory(id: string) {
-  const category = await prisma.category.findUnique({
-    where: { id },
-    include: { items: { select: { imageUrl: true } } },
+  const category = await db.query.categories.findFirst({
+    where: eq(categories.id, id),
+    with: { items: { columns: { imageUrl: true } } },
   });
   if (category) {
     // Delete the category image AND every item image it cascades (Cloudinary
@@ -42,7 +59,7 @@ export async function deleteCategory(id: string) {
       if (it.imageUrl) await deleteImage(it.imageUrl);
     }
   }
-  await prisma.category.delete({ where: { id } });
+  await db.delete(categories).where(eq(categories.id, id));
   revalidatePath("/admin");
   revalidatePath("/admin/menu");
 }
@@ -51,7 +68,7 @@ export async function updateCategory(
   id: string,
   data: { name?: string; imageUrl?: string | null }
 ) {
-  await prisma.category.update({ where: { id }, data });
+  await db.update(categories).set(data).where(eq(categories.id, id));
   revalidatePath("/admin/menu");
 }
 
@@ -63,16 +80,14 @@ export async function createItem(input: {
   description?: string;
   available?: boolean;
 }) {
-  await prisma.menuItem.create({
-    data: {
-      name: input.name,
-      price: paisaFromRupees(input.priceRupees),
-      categoryId: input.categoryId,
-      printerStation: input.station as any,
-      description: input.description || null,
-      available: input.available ?? true,
-      sortOrder: (await prisma.menuItem.count()) + 1,
-    },
+  await db.insert(menuItems).values({
+    name: input.name,
+    price: paisaFromRupees(input.priceRupees),
+    categoryId: input.categoryId,
+    printerStation: input.station as any,
+    description: input.description || null,
+    available: input.available ?? true,
+    sortOrder: await nextSort(menuItems),
   });
   revalidatePath("/admin/menu");
 }
@@ -94,14 +109,14 @@ export async function updateItem(
   if (input.station) data.printerStation = input.station;
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
   delete data.priceRupees;
-  await prisma.menuItem.update({ where: { id }, data });
+  await db.update(menuItems).set(data).where(eq(menuItems.id, id));
   revalidatePath("/admin/menu");
 }
 
 export async function deleteItem(id: string) {
-  const item = await prisma.menuItem.findUnique({ where: { id } });
+  const item = await db.query.menuItems.findFirst({ where: eq(menuItems.id, id) });
   if (item?.imageUrl) await deleteImage(item.imageUrl);
-  await prisma.menuItem.delete({ where: { id } });
+  await db.delete(menuItems).where(eq(menuItems.id, id));
   revalidatePath("/admin/menu");
 }
 
@@ -112,15 +127,13 @@ export async function addModifierGroup(input: {
   maxSelect: number;
   required: boolean;
 }) {
-  await prisma.modifierGroup.create({
-    data: {
-      menuItemId: input.menuItemId,
-      name: input.name,
-      minSelect: input.minSelect,
-      maxSelect: input.maxSelect,
-      required: input.required,
-      sortOrder: (await prisma.modifierGroup.count()) + 1,
-    },
+  await db.insert(modifierGroups).values({
+    menuItemId: input.menuItemId,
+    name: input.name,
+    minSelect: input.minSelect,
+    maxSelect: input.maxSelect,
+    required: input.required,
+    sortOrder: await nextSort(modifierGroups),
   });
   revalidatePath("/admin/menu");
 }
@@ -130,19 +143,17 @@ export async function addModifier(input: {
   name: string;
   priceDeltaRupees: number;
 }) {
-  await prisma.modifier.create({
-    data: {
-      modifierGroupId: input.groupId,
-      name: input.name,
-      priceDelta: paisaFromRupees(input.priceDeltaRupees),
-      sortOrder: (await prisma.modifier.count()) + 1,
-    },
+  await db.insert(modifiers).values({
+    modifierGroupId: input.groupId,
+    name: input.name,
+    priceDelta: paisaFromRupees(input.priceDeltaRupees),
+    sortOrder: await nextSort(modifiers),
   });
   revalidatePath("/admin/menu");
 }
 
 export async function deleteModifier(id: string) {
-  await prisma.modifier.delete({ where: { id } });
+  await db.delete(modifiers).where(eq(modifiers.id, id));
   revalidatePath("/admin/menu");
 }
 
@@ -152,16 +163,20 @@ export async function createDeal(input: {
   valueRupees: number;
   itemIds: string[];
 }) {
-  await prisma.deal.create({
-    data: {
+  const deal = await db
+    .insert(deals)
+    .values({
       name: input.name,
       type: input.type,
       value: paisaFromRupees(input.valueRupees),
       active: true,
-      items: {
-        create: input.itemIds.map((menuItemId) => ({ menuItemId })),
-      },
-    },
-  });
+    })
+    .returning();
+  const dealId = deal[0].id;
+  if (input.itemIds.length) {
+    await db.insert(dealItems).values(
+      input.itemIds.map((menuItemId) => ({ dealId, menuItemId }))
+    );
+  }
   revalidatePath("/admin/deals");
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { prisma } from "@swift-till/db";
 import crypto from "crypto";
+import { db, sessions, users, eq } from "@swift-till/db";
 import {
   resolvePermissions,
   type Permissions,
@@ -34,12 +34,10 @@ export function verifyPassword(p: string, stored: string): boolean {
 
 export async function createSession(userId: string): Promise<string> {
   const token = crypto.randomUUID();
-  await prisma.session.create({
-    data: {
-      token,
-      userId,
-      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
-    },
+  await db.insert(sessions).values({
+    token,
+    userId,
+    expiresAt: new Date(Date.now() + SESSION_TTL_MS),
   });
   return token;
 }
@@ -56,14 +54,14 @@ export async function getSession(): Promise<SessionUser | null> {
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: { user: true },
+  const session = await db.query.sessions.findFirst({
+    where: eq(sessions.token, token),
+    with: { user: true },
   });
   if (!session) return null;
 
   if (session.expiresAt.getTime() < Date.now()) {
-    await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+    await db.delete(sessions).where(eq(sessions.id, session.id)).catch(() => {});
     return null;
   }
   const { user } = session;
@@ -90,7 +88,7 @@ export async function clearSession() {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (token) {
-    await prisma.session.deleteMany({ where: { token } }).catch(() => {});
+    await db.delete(sessions).where(eq(sessions.token, token)).catch(() => {});
   }
   store.delete(SESSION_COOKIE);
 }
@@ -117,7 +115,7 @@ export async function verifyPinForUser(
   userId: string,
   pin: string
 ): Promise<boolean> {
-  const u = await prisma.user.findUnique({ where: { id: userId } });
+  const u = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!u) return false;
   return verifyPin(pin, u.pinHash);
 }

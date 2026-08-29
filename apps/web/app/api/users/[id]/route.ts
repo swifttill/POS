@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, eq } from "@swift-till/db";
 import { requirePermission, hashPin, hashPassword } from "@/lib/auth";
 import { DEFAULT_PERMISSIONS, type Permissions, type Role } from "@/lib/permissions";
 
@@ -24,7 +24,7 @@ export async function PATCH(
       password?: string;
       permissions?: Partial<Permissions>;
     };
-    const existing = await prisma.user.findUnique({ where: { id } });
+    const existing = await db.query.users.findFirst({ where: eq(users.id, id) });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -40,9 +40,9 @@ export async function PATCH(
           ? { ...DEFAULT_PERMISSIONS[role] }
           : undefined;
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
+    const user = await db
+      .update(users)
+      .set({
         ...(body.name !== undefined ? { name: body.name.trim() } : {}),
         ...(body.role !== undefined ? { role } : {}),
         ...(body.active !== undefined ? { active: body.active } : {}),
@@ -59,17 +59,17 @@ export async function PATCH(
           ? { passwordHash: hashPassword(body.password) }
           : {}),
         ...(permissions !== undefined ? { permissions } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        active: true,
-        permissions: true,
-        createdAt: true,
-      },
-    });
-    return NextResponse.json({ user });
+      })
+      .where(eq(users.id, id))
+      .returning({
+        id: users.id,
+        name: users.name,
+        role: users.role,
+        active: users.active,
+        permissions: users.permissions,
+        createdAt: users.createdAt,
+      });
+    return NextResponse.json({ user: user[0] });
   } catch (err) {
     console.error("PATCH /api/users/[id] failed", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
@@ -85,10 +85,7 @@ export async function DELETE(
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   try {
     const { id } = await params;
-    await prisma.user.update({
-      where: { id },
-      data: { active: false },
-    });
+    await db.update(users).set({ active: false }).where(eq(users.id, id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("DELETE /api/users/[id] failed", err);

@@ -1,4 +1,4 @@
-import { prisma } from "@swift-till/db";
+import { db, categories, menuItems, modifierGroups, modifiers, asc } from "@swift-till/db";
 import { MenuManager } from "@/components/admin/MenuManager";
 import type { Station } from "@/lib/types";
 
@@ -38,22 +38,22 @@ type CategoryDTO = {
 };
 
 export default async function MenuPage() {
-  const rows = await prisma.category.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: {
+  const rows = await db.query.categories.findMany({
+    orderBy: asc(categories.sortOrder),
+    with: {
       items: {
-        orderBy: { sortOrder: "asc" },
-        include: {
+        orderBy: asc(menuItems.sortOrder),
+        with: {
           modifierGroups: {
-            orderBy: { sortOrder: "asc" },
-            include: { modifiers: { orderBy: { sortOrder: "asc" } } },
+            orderBy: asc(modifierGroups.sortOrder),
+            with: { modifiers: { orderBy: asc(modifiers.sortOrder) } },
           },
         },
       },
     },
   });
 
-  const categories: CategoryDTO[] = rows.map((c) => ({
+  const categoriesView: CategoryDTO[] = rows.map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
@@ -87,7 +87,7 @@ export default async function MenuPage() {
       <p className="text-muted text-sm mb-6">
         Categories, items, and nested modifiers.
       </p>
-      <MenuManager categories={categories} stations={STATIONS} />
+      <MenuManager categories={categoriesView} stations={STATIONS} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, eq } from "@swift-till/db";
 import { getSession, verifyPassword, hashPassword } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    const dbUser = await db.query.users.findFirst({ where: eq(users.id, user.id) });
     if (!dbUser || !dbUser.passwordHash) {
       return NextResponse.json(
         { error: "No password set; ask an admin to reset it" },
@@ -38,10 +38,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: hashPassword(newPassword) },
-    });
+    await db.update(users).set({ passwordHash: hashPassword(newPassword) }).where(eq(users.id, user.id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("POST /api/auth/reset-password failed", err);

@@ -1,23 +1,28 @@
 import Link from "next/link";
-import { prisma } from "@swift-till/db";
+import { db, categories, menuItems, deals, restaurantTables, orders, sql } from "@swift-till/db";
 
 export const dynamic = "force-dynamic";
 
+async function countRows(table: any): Promise<number> {
+  const r = await db.select({ c: sql<number>`count(*)` }).from(table);
+  return Number(r[0]?.c ?? 0);
+}
+
 export default async function AdminDashboard() {
-  const [categories, items, deals, tables, orders] = await Promise.all([
-    prisma.category.count(),
-    prisma.menuItem.count(),
-    prisma.deal.count(),
-    prisma.restaurantTable.count(),
-    prisma.order.count(),
+  const [catCount, itemCount, dealCount, tableCount, orderCount] = await Promise.all([
+    countRows(categories),
+    countRows(menuItems),
+    countRows(deals),
+    countRows(restaurantTables),
+    countRows(orders),
   ]);
 
   const stats = [
-    { label: "Categories", value: categories, href: "/admin/menu" },
-    { label: "Menu Items", value: items, href: "/admin/menu" },
-    { label: "Deals", value: deals, href: "/admin/deals" },
-    { label: "Tables", value: tables, href: "/admin/menu" },
-    { label: "Orders (all)", value: orders, href: "/" },
+    { label: "Categories", value: catCount, href: "/admin/menu" },
+    { label: "Menu Items", value: itemCount, href: "/admin/menu" },
+    { label: "Deals", value: dealCount, href: "/admin/deals" },
+    { label: "Tables", value: tableCount, href: "/admin/menu" },
+    { label: "Orders (all)", value: orderCount, href: "/" },
   ];
 
   return (

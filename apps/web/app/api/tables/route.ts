@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, restaurantTables, asc } from "@swift-till/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const tables = await prisma.restaurantTable.findMany({
-      orderBy: [{ zone: "asc" }, { number: "asc" }],
-      select: {
+    const tables = await db.query.restaurantTables.findMany({
+      orderBy: [asc(restaurantTables.zone), asc(restaurantTables.number)],
+      columns: {
         id: true,
         number: true,
         name: true,

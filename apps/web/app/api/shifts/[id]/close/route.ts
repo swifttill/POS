@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, shifts, eq } from "@swift-till/db";
 import { buildReport } from "@/lib/reports";
 
 export const dynamic = "force-dynamic";
@@ -14,15 +14,16 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const cashEnd = body.cashEnd != null ? Math.round(Number(body.cashEnd)) : null;
 
-    const existing = await prisma.shift.findUnique({ where: { id } });
+    const existing = await db.query.shifts.findFirst({ where: eq(shifts.id, id) });
     if (!existing) {
       return NextResponse.json({ error: "Shift not found" }, { status: 404 });
     }
 
-    const shift = await prisma.shift.update({
-      where: { id },
-      data: { closedAt: new Date(), cashEnd },
-    });
+    const [shift] = await db
+      .update(shifts)
+      .set({ closedAt: new Date(), cashEnd })
+      .where(eq(shifts.id, id))
+      .returning();
 
     const report = await buildReport({ shiftId: id });
 

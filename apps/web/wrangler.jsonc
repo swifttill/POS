@@ -4,9 +4,6 @@
   "name": "swifttill",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
-  "vars": {
-    "PRISMA_WASM_ORIGIN": "https://swifttill.malik-chatgpt26436.workers.dev"
-  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

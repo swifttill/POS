@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@swift-till/db";
+import { db, companies, categories, menuItems, deals, modifierGroups, modifiers, eq, isNull, asc } from "@swift-till/db";
 
 export interface MenuPayload {
   company: {
@@ -48,32 +48,32 @@ export interface MenuPayload {
 
 // Returns the full menu tree plus company tax config for the FOH terminal.
 export async function getMenuPayload(): Promise<MenuPayload> {
-  const [company, categories, deals] = await Promise.all([
-    prisma.company.findFirst({ where: { id: "singleton" } }),
-    prisma.category.findMany({
-      orderBy: { sortOrder: "asc" },
-      where: { parentId: null },
-      include: {
+  const [company, categoryRows, dealRows] = await Promise.all([
+    db.query.companies.findFirst({ where: eq(companies.id, "singleton") }),
+    db.query.categories.findMany({
+      where: isNull(categories.parentId),
+      orderBy: asc(categories.sortOrder),
+      with: {
         items: {
-          where: { available: true },
-          orderBy: { sortOrder: "asc" },
-          include: {
+          where: eq(menuItems.available, true),
+          orderBy: asc(menuItems.sortOrder),
+          with: {
             modifierGroups: {
-              orderBy: { sortOrder: "asc" },
-              include: {
-                modifiers: { orderBy: { sortOrder: "asc" } },
+              orderBy: asc(modifierGroups.sortOrder),
+              with: {
+                modifiers: { orderBy: asc(modifiers.sortOrder) },
               },
             },
           },
         },
       },
     }),
-    prisma.deal.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      include: {
+    db.query.deals.findMany({
+      where: eq(deals.active, true),
+      orderBy: asc(deals.name),
+      with: {
         items: {
-          include: { menuItem: { select: { id: true, name: true, price: true, imageUrl: true } } },
+          with: { menuItem: true },
         },
       },
     }),
@@ -88,7 +88,7 @@ export async function getMenuPayload(): Promise<MenuPayload> {
       gstEnabled: company?.gstEnabled ?? false,
       gstRate: company?.gstRate ?? 0,
     },
-    categories: categories.map((c) => ({
+    categories: categoryRows.map((c) => ({
       id: c.id,
       name: c.name,
       slug: c.slug,
@@ -115,10 +115,10 @@ export async function getMenuPayload(): Promise<MenuPayload> {
         })),
       })),
     })),
-    deals: deals.map((d) => ({
+    deals: dealRows.map((d) => ({
       id: d.id,
       name: d.name,
-      type: d.type,
+      type: d.type as "BOGO" | "BUNDLE" | "PERCENT",
       value: d.value,
       items: d.items.map((di) => ({
         id: di.menuItem.id,

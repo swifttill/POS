@@ -1,4 +1,4 @@
-import { prisma } from "@swift-till/db";
+import { db, orders, and, eq, gte, lte, notInArray } from "@swift-till/db";
 
 export interface ReportFilters {
   from?: Date | null;
@@ -32,22 +32,20 @@ export interface ReportResult {
 }
 
 export async function buildReport(f: ReportFilters): Promise<ReportResult> {
-  const where: any = {
-    status: { notIn: ["VOIDED", "REFUNDED"] },
-    createdAt: {},
-  };
-  if (f.from) where.createdAt.gte = f.from;
-  if (f.to) where.createdAt.lte = f.to;
-  if (f.shiftId) where.shiftId = f.shiftId;
-  if (f.tender) where.payments = { some: { tender: f.tender } };
+  const conditions = [notInArray(orders.status, ["VOIDED", "REFUNDED"])];
+  if (f.from) conditions.push(gte(orders.createdAt, f.from));
+  if (f.to) conditions.push(lte(orders.createdAt, f.to));
+  if (f.shiftId) conditions.push(eq(orders.shiftId, f.shiftId));
 
-  const orders = await prisma.order.findMany({
-    where,
-    include: {
-      items: { include: { modifiers: true, menuItem: { include: { category: true } } } },
+  let orderList = await db.query.orders.findMany({
+    where: and(...conditions),
+    with: {
+      items: { with: { modifiers: true, menuItem: { with: { category: true } } } },
       payments: true,
     },
   });
+
+  if (f.tender) orderList = orderList.filter((o) => o.payments?.some((p) => p.tender === f.tender));
 
   let revenue = 0;
   let tax = 0;
@@ -61,7 +59,7 @@ export async function buildReport(f: ReportFilters): Promise<ReportResult> {
     { name: string; revenue: number; quantity: number }
   >();
 
-  for (const o of orders) {
+  for (const o of orderList) {
     revenue += o.total;
     tax += o.tax;
     for (const p of o.payments) {
@@ -110,10 +108,10 @@ export async function buildReport(f: ReportFilters): Promise<ReportResult> {
 
   return {
     summary: {
-      orderCount: orders.length,
+      orderCount: orderList.length,
       revenue,
       tax,
-      avgOrder: orders.length ? Math.round(revenue / orders.length) : 0,
+      avgOrder: orderList.length ? Math.round(revenue / orderList.length) : 0,
       byTender,
     },
     topItems,

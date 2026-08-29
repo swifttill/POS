@@ -1,4 +1,4 @@
-import { prisma } from "@swift-till/db";
+import { db, orders, orderItems, companies, eq, asc } from "@swift-till/db";
 import { formatPaisa } from "@/lib/money";
 import { publicAssetIfExists } from "@/lib/brand-server";
 import type { Station } from "@/lib/types";
@@ -20,12 +20,12 @@ export default async function PrintOrder({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, id),
+    with: {
       items: {
-        include: { modifiers: true },
-        orderBy: [{ seat: "asc" }, { name: "asc" }],
+        with: { modifiers: true },
+        orderBy: [asc(orderItems.seat), asc(orderItems.name)],
       },
       payments: true,
       table: true,
@@ -38,7 +38,7 @@ export default async function PrintOrder({
     );
   }
 
-  const company = await prisma.company.findFirst({ where: { id: "singleton" } });
+  const company = await db.query.companies.findFirst({ where: eq(companies.id, "singleton") });
   const logoPath =
     company?.logoUrl ?? publicAssetIfExists("/assets/logo.svg");
 

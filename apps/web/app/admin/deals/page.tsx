@@ -1,21 +1,21 @@
-import { prisma } from "@swift-till/db";
+import { db, deals, dealItems, menuItems, asc } from "@swift-till/db";
 import { DealsManager } from "@/components/admin/DealsManager";
 
 export const dynamic = "force-dynamic";
 
 export default async function DealsPage() {
-  const [deals, items] = await Promise.all([
-    prisma.deal.findMany({
-      orderBy: { name: "asc" },
-      include: { items: { include: { menuItem: true } } },
+  const [dealsRows, items] = await Promise.all([
+    db.query.deals.findMany({
+      orderBy: asc(deals.name),
+      with: { items: { with: { menuItem: true } } },
     }),
-    prisma.menuItem.findMany({ orderBy: { name: "asc" } }),
+    db.query.menuItems.findMany({ orderBy: asc(menuItems.name) }),
   ]);
 
-  const dealsView = deals.map((d) => ({
+  const dealsView = dealsRows.map((d) => ({
     id: d.id,
     name: d.name,
-    type: d.type,
+    type: d.type as "BOGO" | "BUNDLE" | "PERCENT",
     value: Number(d.value),
     active: d.active,
     items: d.items.map((i) => ({

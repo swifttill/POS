@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, asc } from "@swift-till/db";
 import { requirePermission, hashPin, hashPassword } from "@/lib/auth";
 import { DEFAULT_PERMISSIONS, type Permissions, type Role } from "@/lib/permissions";
 
@@ -10,9 +10,9 @@ export async function GET() {
   const auth = await requirePermission("manageUsers");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   try {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
+    const list = await db.query.users.findMany({
+      orderBy: asc(users.createdAt),
+      columns: {
         id: true,
         name: true,
         role: true,
@@ -21,7 +21,7 @@ export async function GET() {
         createdAt: true,
       },
     });
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: list });
   } catch (err) {
     console.error("GET /api/users failed", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
@@ -78,18 +78,18 @@ export async function POST(request: Request) {
       ...(body.email ? { email: body.email.trim().toLowerCase() } : {}),
       ...(body.phone ? { phone: body.phone.trim() } : {}),
     };
-    const user = await prisma.user.create({
-      data,
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        active: true,
-        permissions: true,
-        createdAt: true,
-      },
-    });
-    return NextResponse.json({ user });
+    const user = await db
+      .insert(users)
+      .values(data)
+      .returning({
+        id: users.id,
+        name: users.name,
+        role: users.role,
+        active: users.active,
+        permissions: users.permissions,
+        createdAt: users.createdAt,
+      });
+    return NextResponse.json({ user: user[0] });
   } catch (err) {
     console.error("POST /api/users failed", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

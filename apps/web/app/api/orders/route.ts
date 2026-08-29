@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, orders, orderItems, orderItemModifiers, payments, menuItems, companies, eq, inArray, desc } from "@swift-till/db";
 import { gstAmount } from "@/lib/money";
 import { requirePermission } from "@/lib/auth";
 import type { Station } from "@/lib/types";
@@ -7,23 +7,23 @@ import type { Station } from "@/lib/types";
 // Recent orders (for the FOH Orders panel: reprint / void).
 export async function GET() {
   try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: {
+    const orderList = await db.query.orders.findMany({
+      orderBy: desc(orders.createdAt),
+      limit: 50,
+      with: {
         table: true,
-        _count: { select: { items: true } },
+        items: true,
       },
     });
     return NextResponse.json({
-      orders: orders.map((o) => ({
+      orders: orderList.map((o) => ({
         id: o.id,
         type: o.type,
         status: o.status,
         total: o.total,
         createdAt: o.createdAt,
         tableNumber: o.table?.number ?? null,
-        itemCount: o._count.items,
+        itemCount: o.items.length,
       })),
     });
   } catch (err) {
@@ -91,26 +91,26 @@ export async function POST(request: Request) {
     const itemIds = body.items
       .map((i) => i.menuItemId)
       .filter((id): id is string => Boolean(id));
-    const dbItems = await prisma.menuItem.findMany({
-      where: { id: { in: itemIds } },
+    const dbItems = await db.query.menuItems.findMany({
+      where: inArray(menuItems.id, itemIds),
     });
     const itemMap = new Map(dbItems.map((i) => [i.id, i]));
 
-    const company = await prisma.company.findFirst({
-      where: { id: "singleton" },
+    const company = await db.query.companies.findFirst({
+      where: eq(companies.id, "singleton"),
     });
     const gstRate = company?.gstEnabled ? company?.gstRate ?? 0 : 0;
 
     let subtotal = 0;
-    const orderItems = body.items.map((line) => {
-      const db = line.menuItemId ? itemMap.get(line.menuItemId) : undefined;
+    const orderItemSpecs = body.items.map((line) => {
+      const dbItem = line.menuItemId ? itemMap.get(line.menuItemId) : undefined;
       let name: string;
       let unitPrice: number;
       let station: Station;
-      if (db) {
-        name = db.name;
-        unitPrice = db.price;
-        station = db.printerStation as Station;
+      if (dbItem) {
+        name = dbItem.name;
+        unitPrice = dbItem.price;
+        station = dbItem.printerStation as Station;
       } else {
         // Deal line (no backing MenuItem row) — trust provided name/price.
         if (!line.name || line.unitPrice == null) {
@@ -127,19 +127,19 @@ export async function POST(request: Request) {
       subtotal += lineTotal;
 
       return {
-        menuItemId: db ? db.id : null,
-        name,
-        unitPrice,
-        quantity: line.quantity,
-        seat: line.seat ?? null,
-        notes: line.notes ?? null,
-        station,
-        modifiers: {
-          create: mods.map((m) => ({
-            name: m.name,
-            priceDelta: m.priceDelta,
-          })),
+        row: {
+          menuItemId: dbItem ? dbItem.id : null,
+          name,
+          unitPrice,
+          quantity: line.quantity,
+          seat: line.seat ?? null,
+          notes: line.notes ?? null,
+          station,
         },
+        modifiers: mods.map((m) => ({
+          name: m.name,
+          priceDelta: m.priceDelta,
+        })),
       };
     });
 
@@ -161,8 +161,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const order = await prisma.order.create({
-      data: {
+    const [order] = await db
+      .insert(orders)
+      .values({
         type: body.type,
         tableId: body.tableId ?? null,
         pax: body.pax ?? null,
@@ -178,23 +179,50 @@ export async function POST(request: Request) {
         discountReason: discountPaisa > 0 ? (body.discountReason ?? null) : null,
         discountBy,
         status: "OPEN",
-        items: { create: orderItems },
-        payments: {
-          create: (body.payments ?? []).map((p) => ({
+      })
+      .returning();
+
+    const insertedItems = await db
+      .insert(orderItems)
+      .values(orderItemSpecs.map((s) => ({ ...s.row, orderId: order.id })))
+      .returning();
+
+    for (let i = 0; i < insertedItems.length; i++) {
+      const mods = orderItemSpecs[i].modifiers;
+      if (mods.length) {
+        await db
+          .insert(orderItemModifiers)
+          .values(
+            mods.map((m) => ({
+              orderItemId: insertedItems[i].id,
+              name: m.name,
+              priceDelta: m.priceDelta,
+            }))
+          );
+      }
+    }
+
+    if (body.payments?.length) {
+      await db
+        .insert(payments)
+        .values(
+          body.payments.map((p) => ({
+            orderId: order.id,
             tender: p.tender,
             amount: p.amount,
-          })),
-        },
-      },
-      include: {
-        items: {
-          include: { modifiers: true },
-        },
+          }))
+        );
+    }
+
+    const fullOrder = await db.query.orders.findFirst({
+      where: eq(orders.id, order.id),
+      with: {
+        items: { with: { modifiers: true } },
         payments: true,
       },
     });
 
-    return NextResponse.json({ order });
+    return NextResponse.json({ order: fullOrder });
   } catch (err) {
     console.error("POST /api/orders failed", err);
     return NextResponse.json(

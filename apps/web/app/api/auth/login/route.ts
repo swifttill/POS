@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, eq, and, or } from "@swift-till/db";
 import { verifyPin, verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { resolvePermissions } from "@/lib/permissions";
 
@@ -21,9 +21,9 @@ export async function POST(request: Request) {
       if (!/^\d{4,8}$/.test(body.pin)) {
         return NextResponse.json({ error: "Invalid PIN" }, { status: 400 });
       }
-      const users = await prisma.user.findMany({ where: { active: true } });
-      let matched = null as (typeof users)[number] | null;
-      for (const u of users) {
+      const allUsers = await db.query.users.findMany({ where: eq(users.active, true) });
+      let matched = null as (typeof allUsers)[number] | null;
+      for (const u of allUsers) {
         if (verifyPin(body.pin, u.pinHash)) {
           matched = u;
           break;
@@ -52,15 +52,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const user = await prisma.user.findFirst({
-      where: {
-        active: true,
-        OR: [
-          { username: identifier },
-          { email: identifier },
-          { phone: identifier },
-        ],
-      },
+    const user = await db.query.users.findFirst({
+      where: and(
+        eq(users.active, true),
+        or(
+          eq(users.username, identifier),
+          eq(users.email, identifier),
+          eq(users.phone, identifier)
+        )
+      ),
     });
     if (!user || !user.passwordHash) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, shifts, isNull, desc } from "@swift-till/db";
 
 export const dynamic = "force-dynamic";
 
 // GET current open shift (closedAt is null), if any.
 export async function GET() {
   try {
-    const shift = await prisma.shift.findFirst({
-      where: { closedAt: null },
-      orderBy: { openedAt: "desc" },
+    const shift = await db.query.shifts.findFirst({
+      where: isNull(shifts.closedAt),
+      orderBy: desc(shifts.openedAt),
     });
     return NextResponse.json({ shift });
   } catch (err) {
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
     const openedBy = (body.openedBy as string) || null;
     const cashStart = Math.round(Number(body.cashStart ?? 0));
 
-    const open = await prisma.shift.findFirst({
-      where: { closedAt: null },
+    const open = await db.query.shifts.findFirst({
+      where: isNull(shifts.closedAt),
     });
     if (open) {
       return NextResponse.json(
@@ -34,9 +34,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const shift = await prisma.shift.create({
-      data: { openedBy, cashStart, name: new Date().toISOString().slice(0, 10) },
-    });
+    const [shift] = await db
+      .insert(shifts)
+      .values({ openedBy, cashStart, name: new Date().toISOString().slice(0, 10) })
+      .returning();
     return NextResponse.json({ shift });
   } catch (err) {
     console.error("POST /api/shifts failed", err);

@@ -1,11 +1,11 @@
-import { prisma } from "@swift-till/db";
+import { db, companies, eq } from "@swift-till/db";
 import { CompanyForm } from "@/components/admin/CompanyForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompanyPage() {
-  const company = await prisma.company.findFirst({
-    where: { id: "singleton" },
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.id, "singleton"),
   });
 
   const data = {

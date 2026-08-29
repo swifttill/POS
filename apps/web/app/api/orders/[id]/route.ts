@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, orders, orderItems, eq, asc } from "@swift-till/db";
 
 export async function GET(
   _request: Request,
@@ -7,12 +7,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, id),
+      with: {
         items: {
-          include: { modifiers: true },
-          orderBy: { seat: "asc" },
+          with: { modifiers: true },
+          orderBy: asc(orderItems.seat),
         },
         payments: true,
         table: true,

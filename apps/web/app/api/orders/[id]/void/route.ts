@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, orders, eq } from "@swift-till/db";
 import { requirePermission, verifyPinForUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +24,11 @@ export async function POST(
       }
     }
     const { id } = await params;
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await db.query.orders.findFirst({ where: eq(orders.id, id) });
     if (!order) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    await prisma.order.update({ where: { id }, data: { status: "VOIDED" } });
+    await db.update(orders).set({ status: "VOIDED" }).where(eq(orders.id, id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("POST /api/orders/[id]/void failed", err);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, eq } from "@swift-till/db";
 import { getSession, hashPin, verifyPin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -26,15 +26,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    const dbUser = await db.query.users.findFirst({ where: eq(users.id, user.id) });
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!verifyPin(currentPin, dbUser.pinHash)) {
       return NextResponse.json({ error: "Current PIN is incorrect" }, { status: 401 });
     }
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { pinHash: hashPin(newPin) },
-    });
+    await db.update(users).set({ pinHash: hashPin(newPin) }).where(eq(users.id, user.id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("POST /api/auth/reset-pin failed", err);

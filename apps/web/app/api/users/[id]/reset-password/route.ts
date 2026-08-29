@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@swift-till/db";
+import { db, users, eq } from "@swift-till/db";
 import { requirePermission, hashPassword } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +20,11 @@ export async function POST(
         { status: 400 }
       );
     }
-    const existing = await prisma.user.findUnique({ where: { id } });
+    const existing = await db.query.users.findFirst({ where: eq(users.id, id) });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    await prisma.user.update({
-      where: { id },
-      data: { passwordHash: hashPassword(password) },
-    });
+    await db.update(users).set({ passwordHash: hashPassword(password) }).where(eq(users.id, id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("POST /api/users/[id]/reset-password failed", err);
