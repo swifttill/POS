@@ -38,6 +38,10 @@ export async function POST(request: Request) {
       pin?: string;
       role?: string;
       active?: boolean;
+      username?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
       permissions?: Partial<Permissions>;
     };
     if (!body.name || !body.name.trim()) {
@@ -57,25 +61,23 @@ export async function POST(request: Request) {
       ...DEFAULT_PERMISSIONS[role],
       ...(body.permissions ?? {}),
     };
+    if (body.password && body.password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
     const data = {
       name: body.name.trim(),
       pinHash: hashPin(body.pin),
       role,
       active: body.active ?? true,
       permissions,
+      ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
+      ...(body.username ? { username: body.username.trim() } : {}),
+      ...(body.email ? { email: body.email.trim().toLowerCase() } : {}),
+      ...(body.phone ? { phone: body.phone.trim() } : {}),
     };
-    if (body.password) {
-      if (body.password.length < 6) {
-        return NextResponse.json(
-          { error: "Password must be at least 6 characters" },
-          { status: 400 }
-        );
-      }
-      data.passwordHash = hashPassword(body.password);
-    }
-    if (body.username) data.username = body.username.trim();
-    if (body.email) data.email = body.email.trim().toLowerCase();
-    if (body.phone) data.phone = body.phone.trim();
     const user = await prisma.user.create({
       data,
       select: {
