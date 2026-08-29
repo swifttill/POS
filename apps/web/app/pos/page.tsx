@@ -223,6 +223,7 @@ export default function FOHPage() {
       setTableId(null);
       setPax(null);
       loadPending();
+      window.open(`/kot/${order.id}`, "_blank");
       return order.id;
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Failed to send order");
@@ -342,6 +343,7 @@ export default function FOHPage() {
       setEditOrderId(null);
       setEditLines([]);
       loadPending();
+      window.open(`/kot/${editOrderId}`, "_blank");
     } catch {
       showToast("Failed to update order");
     }

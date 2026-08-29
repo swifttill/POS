@@ -42,7 +42,7 @@ export function Cart({
                   </div>
                 ) : null}
                 {l.notes ? (
-                  <div className="text-xs text-cyan">“{l.notes}”</div>
+                  <div className="text-xs text-muted italic">“{l.notes}”</div>
                 ) : null}
                 {l.seat ? (
                   <div className="text-[10px] text-muted">Seat {l.seat}</div>

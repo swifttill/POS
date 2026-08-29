@@ -28,8 +28,16 @@
 - Create DINE_IN OPEN order (no payment) → KOT status; pending list; PATCH edit/pay → BILLED; mid-order edit recomputes; table create; void.
 - **New**: `POST /api/orders` → OPEN order (GST applied). `GET /bill/[id]` server-renders thermal bill (logo, items+modifiers, subtotal/tax/discount/total, paid/balance, UNPAID/PAID, Print button). Media upload+serve works.
 
-## POS Flow (Implemented, deployed)
-- `apps/web/app/page.tsx`: action bar is now **Hold / Print / Payment** (building) and **Send Update / Print / Payment** (editing). `sendToKitchen`=Hold (creates OPEN, clears cart, sets `activeOrderId`). `payNewOrder` creates+prints receipt. `printBill()` opens `/bill/[id]` in new tab (reprints held order, or auto-holds cart then prints). Pending modal has **Print** per order. `editMeta` now carries proper `subtotal`/`tax` for correct edit-payments. Typography wrapping fix NOT yet done.
+## POS Flow + Routing (Implemented, deployed)
+- `apps/web/app/pos/page.tsx` (was `app/page.tsx`): action bar is **Hold / Print / Payment** (building) and **Send Update / Print / Payment** (editing). `sendToKitchen`=Hold (creates OPEN, clears cart, sets `activeOrderId`). `payNewOrder` creates+prints receipt. `printBill()` opens `/bill/[id]` in new tab (reprints held order, or auto-holds cart then prints). Pending modal has **Print** per order. `editMeta` carries `subtotal`/`tax` for correct edit-payments.
+- **Routing change**: `/` is now the Dashboard; the ordering screen is `/pos`. POS sidebar "POS" links to `/pos`. Login redirects to `/`.
+
+## Dashboard (DONE, deployed)
+- `apps/web/app/page.tsx`: eposmatic-style landing. Header (Logo, welcome, live clock, **Privacy toggle** that blurs money via localStorage, logout). Stat cards: Today's Sales, Orders Today, Open/Unpaid, Avg Ticket (from `/api/dashboard/stats`). Quick-action tiles: New Order→/pos, Pending Orders→/pos, Tables→/admin/tables, Menu→/admin/menu, Reports→/admin/reports, Settings→/admin/company. Auth redirect to /login if 401.
+- `apps/web/app/api/dashboard/stats/route.ts`: today's BILLED sales/count + OPEN count via drizzle `sql`/`gte`/`and`. **Verified**: returns `{todaySalesPaisa,ordersToday,openOrders,avgTicketPaisa}` (e.g. openOrders:2).
+
+## Reports (ALREADY EXISTS — do not rebuild)
+- `apps/web/app/admin/reports/page.tsx` (client "Analytics"): date range + tender + category cross-filters, summary (orders/revenue/tax/avg), tender split, revenue-by-category bars, top-selling items. Backed by `apps/web/app/api/reports/route.ts`. Fully scaffolded. Other pre-built admin pages: `admin/menu`, `admin/deals`, `admin/shifts`, `admin/users`, `admin/company`, `admin/tables`.
 
 ## Bill / Printing
 - `apps/web/app/bill/[id]/page.tsx` — server component, `dynamic=force-dynamic`, queries order (items+modifiers, payments, table) + single company. Thermal-style 320px sheet, print CSS in `globals.css` (`@media print` hides `.no-print`, shows `.bill-sheet`; `.bill-page` scrolls on screen). `components/PrintButton.tsx` (client: window.print / window.close). KOT printing on send-to-kitchen NOT yet implemented (only customer bill).
@@ -40,10 +48,10 @@
 ## Active / Pending
 - **Typography wrapping** on POS (min-w-0/truncate) — NOT done.
 - **KOT print** on send-to-kitchen (no prices, station-routed) — NOT done.
-- **Dashboard** (eposmatic-style: tiles New Order / Pending / Reports; privacy) — NOT started.
-- **Reports suite** (daily/X/Z/itemwise/categorywise/hourly/void/payment/tax/custom; PDF+Excel+print; Daily or Custom) — NOT started. Research: gloriamenu 12 reports + X (mid-shift no reset)/Z (end-of-day reset).
-- **Settings** (org + profile + searchable feature library, icons) — only org page (`/admin/company`) exists.
-- **Deals admin management** — `DealDTO` referenced; confirm/ build deals admin page with image upload.
+- **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
+- **Reports suite** — EXISTS at `/admin/reports` (Analytics: date/tender/category filters, summary, tender split, category & top-item bars). May need Print/PDF/Excel export + X/Z report variants added later.
+- **Settings** — org page `/admin/company` exists; profile + searchable optional-feature toggles NOT done.
+- **Deals admin** — `admin/deals` page exists; verify image upload wired.
 - **Security features** using logo/name — NOT started.
 - Admin menu/category management with image upload — DONE (MenuManager + ImageField). Tables — DONE.
 
