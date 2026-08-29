@@ -59,9 +59,11 @@ if (!src.includes(needle)) {
 }
 
 const replacement = `const wasmPath = "/prisma/query_compiler_bg.postgresql.wasm"
-    const assets = (globalThis as any).ASSETS
+    // opennext stores Cloudflare bindings (incl. ASSETS) under this global symbol.
+    const cfCtx = (globalThis as any)[Symbol.for("__cloudflare-context__")]
+    const assets = cfCtx?.env?.ASSETS ?? (globalThis as any).ASSETS
     if (assets && typeof assets.fetch === "function") {
-      const res = await assets.fetch(new Request("https://prisma.local" + wasmPath))
+      const res = await assets.fetch(new Request("http://assets.local" + wasmPath))
       if (!res.ok) throw new Error("prisma wasm asset load failed: " + res.status)
       return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
     }
