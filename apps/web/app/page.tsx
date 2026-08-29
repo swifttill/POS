@@ -305,8 +305,51 @@ export default function FOHPage() {
   const activeItems =
     menu?.categories.find((c) => c.id === activeCat)?.items ?? [];
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+  }
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex">
+      <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
+        <div className="h-14 px-4 flex items-center border-b border-line">
+          <Logo />
+        </div>
+        <nav className="p-3 space-y-1 text-sm">
+          <button
+            onClick={() => router.replace("/")}
+            className="w-full text-left px-3 py-2 rounded-lg bg-brand-soft text-brand font-medium"
+          >
+            POS
+          </button>
+          <button
+            onClick={() => {
+              setShowOrders(true);
+              loadOrders();
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg hover:bg-panel-2"
+          >
+            Orders
+          </button>
+          <a href="/admin" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
+            Admin
+          </a>
+          <a href="/admin/users" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
+            Users
+          </a>
+          <a href="/admin/reports" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
+            Reports
+          </a>
+          <button
+            onClick={logout}
+            className="w-full text-left px-3 py-2 rounded-lg hover:bg-panel-2 text-danger"
+          >
+            Logout
+          </button>
+        </nav>
+      </aside>
+      <div className="flex-1 flex flex-col min-w-0">
       {offline ? (
         <div className="bg-amber-500/20 text-amber-200 text-xs text-center py-1">
           Offline — orders will queue locally and sync when connection returns.
@@ -315,7 +358,7 @@ export default function FOHPage() {
 
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-line">
-        <Logo />
+        <span className="font-semibold text-ink">SwiftTill POS</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             {pendingSync > 0 ? (
@@ -341,6 +384,12 @@ export default function FOHPage() {
               title="Lock waiter"
             >
               {lockWaiter ? "🔒" : "🔓"}
+            </button>
+            <button
+              onClick={() => router.replace("/")}
+              className="btn-primary text-sm px-3 py-1.5"
+            >
+              New Sale
             </button>
             <button
               onClick={() => {
@@ -573,6 +622,7 @@ export default function FOHPage() {
           onClose={() => setPendingRefundId(null)}
         />
       ) : null}
+      </div>
     </div>
   );
 }
