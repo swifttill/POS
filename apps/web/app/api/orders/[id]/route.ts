@@ -43,3 +43,5 @@ export async function GET(
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
+
+export const runtime = "nodejs";

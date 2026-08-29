@@ -154,3 +154,5 @@ export default async function PrintOrder({
     </div>
   );
 }
+
+export const runtime = "nodejs";

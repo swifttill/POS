@@ -21,3 +21,5 @@ export async function POST(
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
+
+export const runtime = "nodejs";
