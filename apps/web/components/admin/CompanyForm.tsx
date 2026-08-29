@@ -34,7 +34,7 @@ export function CompanyForm({
       currency: form.currency,
       gstEnabled: form.gstEnabled,
       gstRate: Number(form.gstRate),
-      logoUrl: form.logoUrl,
+      logoUrl: form.logoUrl || null,
     });
     setSaved(true);
   }
@@ -65,7 +65,7 @@ export function CompanyForm({
       <ImageField
         label="Logo"
         value={form.logoUrl}
-        onUploaded={(u) => set("logoUrl", u)}
+        onUploaded={(u) => set("logoUrl", u ?? "")}
       />
       <div className="grid grid-cols-2 gap-4">
         <Field label="Currency">
