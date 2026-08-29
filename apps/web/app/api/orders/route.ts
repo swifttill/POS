@@ -252,9 +252,11 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("POST /api/orders failed", err);
     const msg = err instanceof Error ? err.message : String(err);
-    const cause = (err as { cause?: { message?: string } })?.cause?.message ?? "";
+    const reason = msg.includes("params:")
+      ? msg.slice(msg.indexOf("params:") + 7).trim().slice(0, 400)
+      : msg.slice(0, 400);
     return NextResponse.json(
-      { error: "Failed to create order", detail: (msg + " || CAUSE: " + cause).slice(0, 600) },
+      { error: "Failed to create order", detail: reason },
       { status: 500 }
     );
   }
