@@ -42,6 +42,9 @@ export default async function AdminLayout({
           <Link href="/admin/company" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
             Company
           </Link>
+          <Link href="/admin/settings" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+            Settings
+          </Link>
           <Link href="/admin/reports" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
             Reports
           </Link>

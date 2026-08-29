@@ -18,7 +18,7 @@ const QUICK = [
   { key: "tables", label: "Tables", hint: "Floor layout", href: "/admin/tables", tone: "neutral" },
   { key: "menu", label: "Menu", hint: "Items & categories", href: "/admin/menu", tone: "neutral" },
   { key: "reports", label: "Reports", hint: "Sales & analysis", href: "/admin/reports", tone: "neutral" },
-  { key: "admin", label: "Settings", hint: "Company & users", href: "/admin/company", tone: "neutral" },
+  { key: "admin", label: "Settings", hint: "Company & features", href: "/admin/settings", tone: "neutral" },
 ] as const;
 
 export default function DashboardPage() {

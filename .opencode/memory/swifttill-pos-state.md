@@ -49,7 +49,7 @@
 - **Typography wrapping** on POS — mostly addressed: Cart uses min-w-0/truncate; MenuItemCard restyled for light theme (removed broken `to-abyss` gradient + illegible light-tint station chips; price now `text-brand`). Cart note color `text-cyan`→`text-muted`. Residual: any other dark-theme token leftovers (`glow-text`/`glow-border`/`border-electric` now map to brand orange via globals, so on-theme).
 - **KOT print** on send-to-kitchen — DONE. `app/kot/[id]/page.tsx` server-renders station-grouped ticket (no prices, modifiers + notes), auto-prints via `components/AutoPrint.tsx`. Wired into `sendToKitchen` + `sendUpdate` (window.open /kot/[id]). Verified live: groups GRILL/FRY/COLD, no prices.
 - **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
-- **Reports suite** — EXISTS at `/admin/reports` (Analytics: date/tender/category filters, summary, tender split, category & top-item bars). May need Print/PDF/Excel export + X/Z report variants added later.
+- **Reports suite** — DONE for current scope at `/admin/reports`: date/tender/category filters, summary, tender split, category & top-item bars, **Print / PDF** via browser print/save-as-PDF, **Export Excel** via CSV download, and report type selector for Daily/Custom, X (Shift), Z (End of Day). Verified API returns summary and page renders Print/PDF + Export Excel live.
 - **Settings** — org page `/admin/company` exists; profile + searchable optional-feature toggles NOT done.
 - **Deals admin** — `admin/deals` page exists; verify image upload wired.
 - **Security features** using logo/name — NOT started.
@@ -60,9 +60,8 @@ Continue per user's "complete process" spec, verifying each via deploy:
 1. Fix POS typography wrapping.
 2. KOT print on send-to-kitchen.
 3. eposmatic-style Dashboard (New Order / Pending / Reports, privacy).
-4. Reports suite (print + PDF/Excel export, daily/custom).
-5. Settings (profile + searchable optional features).
-6. Deals admin + security features.
+4. Settings (profile + searchable optional features).
+5. Deals admin image upload verification + security features.
 
 ## Relevant Files
 - `apps/web/app/page.tsx` (FOH POS: Hold/Print/Payment, printBill, activeOrderId, editMeta).
