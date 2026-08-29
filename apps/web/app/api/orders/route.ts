@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
 import { gstAmount } from "@/lib/money";
-import { requireManager } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import type { Station } from "@/lib/types";
 
 // Recent orders (for the FOH Orders panel: reprint / void).
@@ -74,13 +74,13 @@ export async function POST(request: Request) {
     }
 
     const discountPaisa = Math.max(0, Math.floor(body.discountPaisa ?? 0));
-    // Discounts require manager approval (enforced server-side).
+    // Discounts require the "discount" permission (enforced server-side).
     let discountBy: string | null = null;
     if (discountPaisa > 0) {
-      const manager = await requireManager();
+      const manager = await requirePermission("discount");
       if (!manager) {
         return NextResponse.json(
-          { error: "Manager approval required for discounts" },
+          { error: "Permission required to apply discounts" },
           { status: 401 }
         );
       }

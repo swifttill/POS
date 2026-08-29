@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
 import { verifyPin, createSession, setSessionCookie } from "@/lib/auth";
+import { resolvePermissions } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,12 @@ export async function POST(request: Request) {
     }
     const token = await createSession(matched.id);
     await setSessionCookie(token);
-    return NextResponse.json({ ok: true, role: matched.role, name: matched.name });
+    return NextResponse.json({
+      ok: true,
+      role: matched.role,
+      name: matched.name,
+      permissions: resolvePermissions(matched.role, matched.permissions),
+    });
   } catch (err) {
     console.error("POST /api/auth/login failed", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

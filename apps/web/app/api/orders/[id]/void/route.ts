@@ -1,18 +1,27 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
-import { requireManager } from "@/lib/auth";
+import { requirePermission, verifyPinForUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/orders/[id]/void -> mark an order voided (excluded from reports).
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const manager = await requireManager();
-    if (!manager) {
-      return NextResponse.json({ error: "Manager approval required" }, { status: 401 });
+    const user = await requirePermission("void");
+    if (!user) {
+      return NextResponse.json({ error: "Permission required to void" }, { status: 401 });
+    }
+    if (user.permissions.voidRequiresPin) {
+      const { pin } = (await request.json().catch(() => ({}))) as { pin?: string };
+      if (!pin || !(await verifyPinForUser(user.id, pin))) {
+        return NextResponse.json(
+          { error: "PIN re-entry required to void" },
+          { status: 401 }
+        );
+      }
     }
     const { id } = await params;
     const order = await prisma.order.findUnique({ where: { id } });

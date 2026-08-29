@@ -2,6 +2,11 @@ import "server-only";
 import { cookies } from "next/headers";
 import { prisma } from "@swift-till/db";
 import crypto from "crypto";
+import {
+  resolvePermissions,
+  type Permissions,
+  type Permission,
+} from "./permissions";
 
 export const SESSION_COOKIE = "st_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24; // 24h
@@ -35,6 +40,7 @@ export interface SessionUser {
   id: string;
   name: string;
   role: string;
+  permissions: Permissions;
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -54,7 +60,12 @@ export async function getSession(): Promise<SessionUser | null> {
   }
   const { user } = session;
   if (!user.active) return null;
-  return { id: user.id, name: user.name, role: user.role };
+  return {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    permissions: resolvePermissions(user.role, user.permissions),
+  };
 }
 
 export async function setSessionCookie(token: string) {
@@ -81,4 +92,24 @@ export async function requireManager(): Promise<SessionUser | null> {
   if (!user) return null;
   if (user.role !== "ADMIN" && user.role !== "MANAGER") return null;
   return user;
+}
+
+export async function requirePermission(
+  perm: Permission
+): Promise<SessionUser | null> {
+  const user = await getSession();
+  if (!user) return null;
+  if (!user.permissions[perm]) return null;
+  return user;
+}
+
+// Verify a PIN against a specific user's stored hash (used for
+// re-entry confirmation on sensitive actions like void/refund).
+export async function verifyPinForUser(
+  userId: string,
+  pin: string
+): Promise<boolean> {
+  const u = await prisma.user.findUnique({ where: { id: userId } });
+  if (!u) return false;
+  return verifyPin(pin, u.pinHash);
 }

@@ -12,13 +12,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  role      String   @default("WAITER") // ADMIN | MANAGER | WAITER
-  pinHash   String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  sessions  Session[]
+  id         String   @id @default(cuid())
+  name       String
+  role       String   @default("WAITER") // ADMIN | MANAGER | WAITER
+  pinHash    String
+  permissions Json?    // per-user permission overrides; resolved against role defaults
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  sessions   Session[]
 }
 
 model Session {
