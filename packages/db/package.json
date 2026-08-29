@@ -11,7 +11,7 @@
     "generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && node scripts/patch-prisma-wasm.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

@@ -80,8 +80,15 @@ config.compilerWasm = {
   getRuntime: async () => await import("@prisma/client/runtime/query_compiler_bg.postgresql.mjs"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_bg.postgresql.wasm-base64.mjs")
-    return await decodeBase64AsWasm(wasm)
+    const assets = (globalThis as any).ASSETS
+    if (assets && typeof assets.fetch === "function") {
+      const res = await assets.fetch(new Request("https://prisma.local/prisma/query_compiler_bg.postgresql.wasm"))
+      if (!res.ok) throw new Error("prisma wasm asset load failed: " + res.status)
+      return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
+    }
+    const spec = "@prisma/client/runtime/query_compiler_bg.postgresql.wasm-base64.mjs"
+    const mod = await import(spec)
+    return await decodeBase64AsWasm(mod.wasm)
   }
 }
 
