@@ -162,7 +162,6 @@ export async function createDeal(input: {
   type: "BOGO" | "BUNDLE" | "PERCENT";
   valueRupees: number;
   itemIds: string[];
-  imageUrl?: string | null;
 }) {
   const deal = await db
     .insert(deals)
@@ -171,7 +170,6 @@ export async function createDeal(input: {
       type: input.type,
       value: paisaFromRupees(input.valueRupees),
       active: true,
-      imageUrl: input.imageUrl ?? null,
     })
     .returning();
   const dealId = deal[0].id;
@@ -185,13 +183,12 @@ export async function createDeal(input: {
 
 export async function updateDeal(
   id: string,
-  data: { name?: string; type?: string; valueRupees?: number; imageUrl?: string | null; active?: boolean }
+  data: { name?: string; type?: string; valueRupees?: number; active?: boolean }
 ) {
   const update: Record<string, any> = {};
   if (data.name !== undefined) update.name = data.name;
   if (data.type !== undefined) update.type = data.type;
   if (data.valueRupees !== undefined) update.value = paisaFromRupees(data.valueRupees);
-  if (data.imageUrl !== undefined) update.imageUrl = data.imageUrl;
   if (data.active !== undefined) update.active = data.active;
   if (Object.keys(update).length) {
     await db.update(deals).set(update).where(eq(deals.id, id));

@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPaisa } from "@/lib/money";
-import { createDeal, updateDeal } from "@/lib/admin-actions";
-import { ImageField } from "@/components/admin/ImageField";
+import { createDeal } from "@/lib/admin-actions";
 
 interface DealView {
   id: string;
@@ -12,7 +11,6 @@ interface DealView {
   type: "BOGO" | "BUNDLE" | "PERCENT";
   value: number;
   active: boolean;
-  imageUrl: string | null;
   items: { id: string; name: string }[];
 }
 interface ItemOption {
@@ -35,12 +33,10 @@ export function DealsManager({
   const [type, setType] = useState<"BOGO" | "BUNDLE" | "PERCENT">("BUNDLE");
   const [value, setValue] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [imageUrl, setImageUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingType, setEditingType] = useState<"BOGO" | "BUNDLE" | "PERCENT">("BUNDLE");
   const [editingValue, setEditingValue] = useState("");
-  const [editingImageUrl, setEditingImageUrl] = useState("");
   const [editingActive, setEditingActive] = useState(true);
 
   function toggle(id: string) {
@@ -56,12 +52,10 @@ export function DealsManager({
       type,
       valueRupees: Number(value || 0),
       itemIds: selected,
-      imageUrl: imageUrl || null,
     });
     setName("");
     setValue("");
     setSelected([]);
-    setImageUrl("");
     router.refresh();
   }
 
@@ -70,7 +64,6 @@ export function DealsManager({
     setEditingName(d.name);
     setEditingType(d.type);
     setEditingValue(d.value > 0 ? String(d.value) : "");
-    setEditingImageUrl(d.imageUrl || "");
     setEditingActive(d.active);
   }
 
@@ -80,7 +73,6 @@ export function DealsManager({
       name: editingName.trim(),
       type: editingType,
       valueRupees: Number(editingValue || 0),
-      imageUrl: editingImageUrl || null,
       active: editingActive,
     });
     setEditingId(null);
@@ -136,12 +128,6 @@ export function DealsManager({
             className={inputCls + " w-40"}
           />
         </div>
-        <ImageField
-          folder="deals"
-          value={editingId ? editingImageUrl : imageUrl}
-          onUploaded={(u) => (editingId ? setEditingImageUrl(u ?? "") : setImageUrl(u ?? ""))}
-          label="Deal image"
-        />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {itemOptions.map((i) => {
             const on = selected.includes(i.id);
@@ -191,14 +177,7 @@ export function DealsManager({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {deals.map((d) => (
           <div key={d.id} className="card p-4">
-            <ImageField
-              folder="deals"
-              compact
-              label="Img"
-              value={d.imageUrl}
-              onUploaded={(u) => updateDeal(d.id, { imageUrl: u })}
-            />
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between">
               <h3 className="font-bold">{d.name}</h3>
               <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-brand-soft text-brand">
                 {d.type}
