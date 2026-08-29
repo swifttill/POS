@@ -759,8 +759,6 @@ export default function FOHPage() {
         ) : null}
       </div>
     </div>
-  );
-}
 
 function makeLine(
   menuItemId: string,
