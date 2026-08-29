@@ -79,7 +79,8 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("POST /api/auth/login failed", err);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: "Failed", detail: msg.slice(0, 300) }, { status: 500 });
   }
 }
 
