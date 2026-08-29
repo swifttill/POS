@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
-import { getSessionUser, verifyPassword, hashPassword } from "@/lib/auth";
+import { getSession, verifyPassword, hashPassword } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/reset-password { currentPassword, newPassword } -> logged-in user changes own password.
 export async function POST(request: Request) {
-  const user = await getSessionUser();
+  const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { currentPassword, newPassword } = (await request.json()) as {
