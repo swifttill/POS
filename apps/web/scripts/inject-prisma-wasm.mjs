@@ -30,7 +30,7 @@ console.log("[inject-prisma-wasm] copied wasm ->", wasmDest);
 let worker = fs.readFileSync(workerFile, "utf8");
 const marker = "// __PRISMA_WASM_INJECTED__";
 if (!worker.includes(marker)) {
-  const prelude = `import { PRISMA_WASM as __prismaWasmModule } from "./prisma_compiler.wasm";\n${marker}\nglobalThis.__PRISMA_WASM__ = __prismaWasmModule;\n`;
+  const prelude = `import __prismaWasmModule from "./prisma_compiler.wasm";\n${marker}\nglobalThis.__PRISMA_WASM__ = __prismaWasmModule;\n`;
   // Insert after the first line so any "use strict"/shebang is preserved.
   const nl = worker.indexOf("\n");
   if (nl === -1) {
