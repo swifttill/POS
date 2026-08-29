@@ -76,7 +76,8 @@ export async function POST(request: Request) {
     if (body.username) data.username = body.username.trim();
     if (body.email) data.email = body.email.trim().toLowerCase();
     if (body.phone) data.phone = body.phone.trim();
-    const user = await prisma.user.create({ data });
+    const user = await prisma.user.create({
+      data,
       select: {
         id: true,
         name: true,
