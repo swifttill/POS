@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       currentPin?: string;
       newPin?: string;
     };
-    if (!currentPin || !/^\d{4,8}$/.test(newPin ?? "")) {
+    if (!newPin || !/^\d{4,8}$/.test(newPin)) {
       return NextResponse.json(
         { error: "New PIN must be 4-8 digits" },
         { status: 400 }
