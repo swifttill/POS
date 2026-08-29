@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const buf = await file.arrayBuffer();
 
     const { env } = await getCloudflareContext({ async: true });
-    await env.MEDIA.put(key, buf, {
+    await (env as any).MEDIA.put(key, buf, {
       httpMetadata: { contentType: file.type },
     });
 
