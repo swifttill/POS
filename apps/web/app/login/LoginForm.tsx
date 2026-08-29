@@ -9,8 +9,8 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
+    if (!pin) return;
     setBusy(true);
     setError(null);
     try {
@@ -25,7 +25,7 @@ export default function LoginForm() {
         setBusy(false);
         return;
       }
-      router.replace("/admin");
+      router.replace("/");
       router.refresh();
     } catch {
       setError("Network error");
@@ -33,25 +33,58 @@ export default function LoginForm() {
     }
   }
 
+  function press(d: string) {
+    if (pin.length >= 8) return;
+    setPin((p) => p + d);
+  }
+  function back() {
+    setPin((p) => p.slice(0, -1));
+  }
+
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <div className="space-y-4">
       <input
-        autoFocus
-        type="password"
-        inputMode="numeric"
+        readOnly
         value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        placeholder="PIN"
-        className="w-full bg-panel-2 border border-line rounded-lg px-4 py-3 text-center tracking-[0.5em] text-lg outline-none focus:border-electric"
+        placeholder="••••"
+        className="w-full input text-center tracking-[0.5em] text-2xl py-3 select-none"
       />
-      {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      <button
-        type="submit"
-        disabled={busy || !pin}
-        className="btn-primary w-full py-3 disabled:opacity-50"
-      >
-        {busy ? "Signing in…" : "Sign in"}
-      </button>
-    </form>
+      {error ? <p className="text-sm text-danger text-center">{error}</p> : null}
+
+      <div className="grid grid-cols-3 gap-2">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => press(d)}
+            className="btn-secondary py-3 text-lg font-medium"
+          >
+            {d}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={back}
+          className="btn-secondary py-3 text-lg font-medium text-muted"
+        >
+          ⌫
+        </button>
+        <button
+          type="button"
+          onClick={() => press("0")}
+          className="btn-secondary py-3 text-lg font-medium"
+        >
+          0
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || !pin}
+          className="btn-primary py-3 text-lg font-semibold disabled:opacity-50"
+        >
+          {busy ? "…" : "OK"}
+        </button>
+      </div>
+    </div>
   );
 }

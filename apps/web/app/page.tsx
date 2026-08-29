@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { OrderTypeTabs } from "@/components/OrderTypeTabs";
 import { TableMap, type TableDTO } from "@/components/TableMap";
@@ -34,6 +35,17 @@ import type {
 } from "@/lib/types";
 
 export default function FOHPage() {
+  const router = useRouter();
+
+  // Gate: unauthenticated visitors are sent to the PIN login screen.
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => {
+        if (r.status === 401) router.replace("/login");
+      })
+      .catch(() => {});
+  }, [router]);
+
   const [menu, setMenu] = useState<MenuResponse | null>(null);
   const [tables, setTables] = useState<TableDTO[]>([]);
   const [loading, setLoading] = useState(true);

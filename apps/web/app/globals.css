@@ -1,22 +1,34 @@
 @import "tailwindcss";
 
-/* SwiftTill brand tokens (Tailwind v4 @theme) */
+/* SwiftTill brand tokens (Tailwind v4 @theme) — light, professional SaaS POS */
 @theme {
-  --color-void: #000000;
-  --color-abyss: #05070d;
-  --color-panel: #0b0f1a;
-  --color-panel-2: #111726;
-  --color-line: #1c2433;
-  --color-electric: #2f6bff;
-  --color-cyan: #22d3ee;
-  --color-muted: #8b97ad;
-  --color-text: #e8edf7;
+  --color-background: #f7f7f6;
+  --color-surface: #ffffff;
+  --color-surface-2: #fbfbfa;
+  --color-panel-2: #f2f2f0;
+  --color-line: #e8e8e8;
+  --color-ink: #1f1f1f;
+  --color-text: #1f1f1f;
+  --color-muted: #777777;
+
+  /* Brand + semantic accents */
+  --color-brand: #ff7a00;
+  --color-brand-soft: #fff1e6;
+  --color-success: #00b83f;
+  --color-success-soft: #e7f8ec;
+  --color-danger: #e5484d;
+  --color-warn: #f5a524;
+
+  /* Repurpose legacy accent tokens so existing `electric`/`cyan` utilities
+     now read as brand orange / success green. */
+  --color-electric: #ff7a00;
+  --color-cyan: #00b83f;
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -25,51 +37,90 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(47, 107, 255, 0.12), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(34, 211, 238, 0.1), transparent 55%),
-    var(--color-void);
+  background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-/* Glow accents */
-.glow-border {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--color-panel-2), var(--color-panel-2)) padding-box,
-    linear-gradient(135deg, var(--color-electric), var(--color-cyan)) border-box;
-  box-shadow: 0 0 24px rgba(47, 107, 255, 0.25);
-}
-
-.glow-text {
-  background: linear-gradient(135deg, var(--color-electric), var(--color-cyan));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
+/* Buttons ---------------------------------------------------------------- */
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-electric), var(--color-cyan));
-  color: #001018;
+  background: var(--color-brand);
+  color: #fff;
   font-weight: 600;
   border-radius: 0.75rem;
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.35);
-  transition: transform 0.08s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(31, 31, 31, 0.06);
+  transition: transform 0.08s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.04);
 }
 .btn-primary:active {
   transform: scale(0.98);
 }
 
-.card {
-  background: var(--color-panel);
-  border: 1px solid var(--color-line);
-  border-radius: 1rem;
+.btn-success {
+  background: var(--color-success);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(31, 31, 31, 0.06);
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+.btn-success:hover {
+  filter: brightness(1.04);
+}
+.btn-success:active {
+  transform: scale(0.98);
 }
 
-/* Thin scrollbars for the dark UI */
+.btn-secondary {
+  background: #fff;
+  color: var(--color-ink);
+  font-weight: 500;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.btn-secondary:hover {
+  background: var(--color-surface-2);
+  border-color: #d8d8d6;
+}
+
+/* Surfaces --------------------------------------------------------------- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(31, 31, 31, 0.04);
+}
+
+/* Selected / focused accent border (was the neon "glow") */
+.glow-border {
+  border: 1px solid var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-soft);
+}
+
+.glow-text {
+  color: var(--color-brand);
+}
+
+/* Inputs ----------------------------------------------------------------- */
+.input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-soft);
+}
+
+/* Thin, light scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
@@ -79,6 +130,15 @@ body {
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-line);
+  background: #d9d9d6;
   border-radius: 999px;
+}
+
+/* Utility: brand-tinted section title */
+.section-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+  font-weight: 600;
 }
