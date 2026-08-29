@@ -51,6 +51,9 @@ export default async function AdminLayout({
           <Link href="/admin/users" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
             Users
           </Link>
+          <Link href="/admin/tables" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+            Tables
+          </Link>
           <span className="ml-2 px-3 py-1.5 text-muted">
             {user.name} · <span className="uppercase">{user.role}</span>
           </span>

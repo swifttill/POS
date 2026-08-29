@@ -4,27 +4,41 @@ import { gstAmount } from "@/lib/money";
 import { requirePermission } from "@/lib/auth";
 import type { Station } from "@/lib/types";
 
-// Recent orders (for the FOH Orders panel: reprint / void).
-export async function GET() {
+// Recent / pending orders (for the FOH Orders panel: edit / pay / void).
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get("status");
+
     const orderList = await db.query.orders.findMany({
       orderBy: desc(orders.createdAt),
-      limit: 50,
+      limit: statusFilter === "OPEN" ? 200 : 50,
+      ...(statusFilter ? { where: eq(orders.status, statusFilter) } : {}),
       with: {
         table: true,
         items: true,
+        payments: true,
       },
     });
     return NextResponse.json({
-      orders: orderList.map((o) => ({
-        id: o.id,
-        type: o.type,
-        status: o.status,
-        total: o.total,
-        createdAt: o.createdAt,
-        tableNumber: o.table?.number ?? null,
-        itemCount: o.items.length,
-      })),
+      orders: orderList.map((o) => {
+        const paid = o.payments.reduce((s, p) => s + p.amount, 0);
+        return {
+          id: o.id,
+          type: o.type,
+          status: o.status,
+          subtotal: o.subtotal,
+          tax: o.tax,
+          total: o.total,
+          discountPaisa: o.discountPaisa,
+          paid,
+          createdAt: o.createdAt,
+          tableNumber: o.table?.number ?? null,
+          tableName: o.table?.name ?? null,
+          itemCount: o.items.length,
+          editable: o.status === "OPEN" || o.status === "BILLED",
+        };
+      }),
     });
   } catch (err) {
     console.error("GET /api/orders failed", err);
@@ -143,7 +157,6 @@ export async function POST(request: Request) {
       };
     });
 
-    const tax = gstAmount(subtotal, gstRate);
     // Apply the (manager-approved) discount to the subtotal, then tax the
     // discounted amount.
     const discountedSubtotal = Math.max(0, subtotal - discountPaisa);
@@ -154,12 +167,16 @@ export async function POST(request: Request) {
       (s, p) => s + p.amount,
       0
     );
-    if (paidTotal !== total) {
+    // No payments => the order is "sent to kitchen" and parked as OPEN
+    // (pending / held). With full payment it is BILLED immediately.
+    const hasPayments = (body.payments?.length ?? 0) > 0;
+    if (hasPayments && paidTotal !== total) {
       return NextResponse.json(
         { error: "Tendered amount does not match total", paidTotal, total },
         { status: 400 }
       );
     }
+    const finalStatus = hasPayments ? "BILLED" : "OPEN";
 
     const [order] = await db
       .insert(orders)
@@ -178,7 +195,9 @@ export async function POST(request: Request) {
         discountPaisa,
         discountReason: discountPaisa > 0 ? (body.discountReason ?? null) : null,
         discountBy,
-        status: "OPEN",
+        status: finalStatus,
+        kotPrinted: true,
+        billedAt: finalStatus === "BILLED" ? new Date() : null,
       })
       .returning();
 

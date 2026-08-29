@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { db, restaurantTables, asc } from "@swift-till/db";
+import { db, restaurantTables, eq, asc } from "@swift-till/db";
+import { requireManager } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,41 @@ export async function GET() {
   } catch (err) {
     console.error("GET /api/tables failed", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const manager = await requireManager();
+    if (!manager) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const body = (await request.json()) as {
+      number: number;
+      name?: string | null;
+      seats?: number;
+      zone?: string | null;
+      posX?: number;
+      posY?: number;
+    };
+    if (!body.number || body.number < 1) {
+      return NextResponse.json({ error: "Table number required" }, { status: 400 });
+    }
+    const [table] = await db
+      .insert(restaurantTables)
+      .values({
+        number: body.number,
+        name: body.name ?? null,
+        seats: body.seats ?? 2,
+        zone: body.zone ?? "Floor",
+        posX: body.posX ?? 0,
+        posY: body.posY ?? 0,
+      })
+      .returning();
+    return NextResponse.json({ table });
+  } catch (err) {
+    console.error("POST /api/tables failed", err);
+    return NextResponse.json({ error: "Failed to create table" }, { status: 500 });
   }
 }
 
