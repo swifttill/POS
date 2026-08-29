@@ -24,6 +24,14 @@ export function verifyPin(pin: string, stored: string): boolean {
   return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(candidate));
 }
 
+// Account passwords use the same scrypt primitive (works on any string).
+export function hashPassword(p: string): string {
+  return hashPin(p);
+}
+export function verifyPassword(p: string, stored: string): boolean {
+  return verifyPin(p, stored);
+}
+
 export async function createSession(userId: string): Promise<string> {
   const token = crypto.randomUUID();
   await prisma.session.create({

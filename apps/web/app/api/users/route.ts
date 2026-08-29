@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
-import { requirePermission, hashPin } from "@/lib/auth";
+import { requirePermission, hashPin, hashPassword } from "@/lib/auth";
 import { DEFAULT_PERMISSIONS, type Permissions, type Role } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -57,14 +57,26 @@ export async function POST(request: Request) {
       ...DEFAULT_PERMISSIONS[role],
       ...(body.permissions ?? {}),
     };
-    const user = await prisma.user.create({
-      data: {
-        name: body.name.trim(),
-        pinHash: hashPin(body.pin),
-        role,
-        active: body.active ?? true,
-        permissions,
-      },
+    const data = {
+      name: body.name.trim(),
+      pinHash: hashPin(body.pin),
+      role,
+      active: body.active ?? true,
+      permissions,
+    };
+    if (body.password) {
+      if (body.password.length < 6) {
+        return NextResponse.json(
+          { error: "Password must be at least 6 characters" },
+          { status: 400 }
+        );
+      }
+      data.passwordHash = hashPassword(body.password);
+    }
+    if (body.username) data.username = body.username.trim();
+    if (body.email) data.email = body.email.trim().toLowerCase();
+    if (body.phone) data.phone = body.phone.trim();
+    const user = await prisma.user.create({ data });
       select: {
         id: true,
         name: true,

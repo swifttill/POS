@@ -3,7 +3,8 @@
 // to avoid floating-point rounding errors in the till.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters", "queryCompiler"]
 }
 
 datasource db {
@@ -12,14 +13,18 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  name       String
-  role       String   @default("WAITER") // ADMIN | MANAGER | WAITER
-  pinHash    String
-  permissions Json?    // per-user permission overrides; resolved against role defaults
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  sessions   Session[]
+  id           String   @id @default(cuid())
+  name         String
+  username     String?  @unique
+  email        String?  @unique
+  phone        String?  @unique
+  role         String   @default("WAITER") // ADMIN | MANAGER | WAITER
+  pinHash      String // staff quick PIN (scrypt)
+  passwordHash String? // account password (scrypt); used for identifier login
+  permissions  Json?    // per-user permission overrides; resolved against role defaults
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  sessions     Session[]
 }
 
 model Session {

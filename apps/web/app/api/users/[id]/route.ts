@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@swift-till/db";
-import { requirePermission, hashPin } from "@/lib/auth";
+import { requirePermission, hashPin, hashPassword } from "@/lib/auth";
 import { DEFAULT_PERMISSIONS, type Permissions, type Role } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,10 @@ export async function PATCH(
       name?: string;
       role?: string;
       active?: boolean;
+      username?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
       permissions?: Partial<Permissions>;
     };
     const existing = await prisma.user.findUnique({ where: { id } });
@@ -42,6 +46,18 @@ export async function PATCH(
         ...(body.name !== undefined ? { name: body.name.trim() } : {}),
         ...(body.role !== undefined ? { role } : {}),
         ...(body.active !== undefined ? { active: body.active } : {}),
+        ...(body.username !== undefined
+          ? { username: body.username ? body.username.trim() : null }
+          : {}),
+        ...(body.email !== undefined
+          ? { email: body.email ? body.email.trim().toLowerCase() : null }
+          : {}),
+        ...(body.phone !== undefined
+          ? { phone: body.phone ? body.phone.trim() : null }
+          : {}),
+        ...(body.password
+          ? { passwordHash: hashPassword(body.password) }
+          : {}),
         ...(permissions !== undefined ? { permissions } : {}),
       },
       select: {

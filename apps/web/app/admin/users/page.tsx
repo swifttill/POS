@@ -13,6 +13,9 @@ import {
 type UserRow = {
   id: string;
   name: string;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
   role: Role;
   active: boolean;
   permissions: Permissions | null;
@@ -41,6 +44,10 @@ export default function UsersPage() {
   const [role, setRole] = useState<Role>("WAITER");
   const [active, setActive] = useState(true);
   const [pin, setPin] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [perms, setPerms] = useState<Permissions>(DEFAULT_PERMISSIONS.WAITER);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +74,10 @@ export default function UsersPage() {
     setRole("WAITER");
     setActive(true);
     setPin("");
+    setUsername("");
+    setEmail("");
+    setPhone("");
+    setPassword("");
     setPerms(DEFAULT_PERMISSIONS.WAITER);
   }
 
@@ -78,6 +89,10 @@ export default function UsersPage() {
     setRole(u.role);
     setActive(u.active);
     setPin("");
+    setUsername(u.username ?? "");
+    setEmail(u.email ?? "");
+    setPhone(u.phone ?? "");
+    setPassword("");
     setPerms(permsFrom(u.role, u.permissions));
   }
 
@@ -99,12 +114,31 @@ export default function UsersPage() {
         ? await fetch(`/api/users/${editing.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, role, active, permissions: perms }),
+            body: JSON.stringify({
+              name,
+              role,
+              active,
+              username,
+              email,
+              phone,
+              ...(password ? { password } : {}),
+              permissions: perms,
+            }),
           })
         : await fetch(`/api/users`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, pin, role, active, permissions: perms }),
+            body: JSON.stringify({
+              name,
+              pin,
+              role,
+              active,
+              username,
+              email,
+              phone,
+              ...(password ? { password } : {}),
+              permissions: perms,
+            }),
           });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -145,6 +179,33 @@ export default function UsersPage() {
       }
       setResetFor(null);
       setPin("");
+      setBusy(false);
+    } catch {
+      setError("Network error");
+      setBusy(false);
+    }
+  }
+
+  const [resetPwFor, setResetPwFor] = useState<UserRow | null>(null);
+  const [resetPw, setResetPw] = useState("");
+
+  async function resetPassword() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${resetPwFor!.id}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: resetPw }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Failed");
+        setBusy(false);
+        return;
+      }
+      setResetPwFor(null);
+      setResetPw("");
       setBusy(false);
     } catch {
       setError("Network error");
@@ -227,6 +288,16 @@ export default function UsersPage() {
                     >
                       Reset PIN
                     </button>
+                    <button
+                      onClick={() => {
+                        setResetPwFor(u);
+                        setResetPw("");
+                        setError(null);
+                      }}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-line hover:border-brand/50"
+                    >
+                      Reset Password
+                    </button>
                     {u.active ? (
                       <button
                         onClick={() => deactivate(u)}
@@ -285,6 +356,50 @@ export default function UsersPage() {
                   onChange={(e) => setPin(e.target.value)}
                   className="input w-full mt-1 px-3 py-2 tracking-[0.4em] text-center"
                   placeholder="••••"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="section-title">Username</label>
+                  <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="input w-full mt-1 px-3 py-2"
+                    placeholder="e.g. ahmed"
+                  />
+                </div>
+                <div>
+                  <label className="section-title">Phone</label>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="input w-full mt-1 px-3 py-2"
+                    placeholder="03xx xxxxxxx"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="section-title">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input w-full mt-1 px-3 py-2"
+                  placeholder="name@business.com"
+                />
+              </div>
+              <div>
+                <label className="section-title">
+                  {editing
+                    ? "New password (leave blank to keep, min 6)"
+                    : "Password (optional, min 6)"}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input w-full mt-1 px-3 py-2"
+                  placeholder="••••••••"
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">
@@ -366,6 +481,41 @@ export default function UsersPage() {
               <button
                 onClick={resetPin}
                 disabled={busy || !pin}
+                className="btn-primary flex-1 py-2 disabled:opacity-50"
+              >
+                {busy ? "…" : "Reset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Reset Password modal */}
+      {resetPwFor ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-lg space-y-3">
+            <h2 className="text-lg font-semibold text-ink">
+              Reset Password — {resetPwFor.name}
+            </h2>
+            <input
+              type="password"
+              autoFocus
+              value={resetPw}
+              onChange={(e) => setResetPw(e.target.value)}
+              placeholder="New password (min 6)"
+              className="input w-full px-3 py-2.5"
+            />
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setResetPwFor(null)}
+                className="btn-secondary flex-1 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={resetPassword}
+                disabled={busy || !resetPw || resetPw.length < 6}
                 className="btn-primary flex-1 py-2 disabled:opacity-50"
               >
                 {busy ? "…" : "Reset"}

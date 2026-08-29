@@ -203,36 +203,62 @@ async function main() {
 
   // --- Users (auth) -------------------------------------------------------
   const adminPin = process.env.ADMIN_PIN ?? "1234";
-  await prisma.user.upsert({
-    where: { id: "user-admin" },
-    update: {},
-    create: {
+  function hashPassword(p: string): string {
+    return hashPin(p);
+  }
+  const admins = [
+    {
       id: "user-admin",
       name: "Admin",
       role: "ADMIN",
-      pinHash: hashPin(adminPin),
+      pin: adminPin,
+      password: process.env.ADMIN_PASS ?? "admin1234",
+      username: "admin",
+      email: "admin@swifttill.pos",
+      phone: "03001234567",
     },
-  });
-  await prisma.user.upsert({
-    where: { id: "user-manager" },
-    update: {},
-    create: {
+    {
       id: "user-manager",
       name: "Manager",
       role: "MANAGER",
-      pinHash: hashPin("2222"),
+      pin: "2222",
+      password: "manager1234",
+      username: "manager",
+      email: "manager@swifttill.pos",
+      phone: "03001234568",
     },
-  });
-  await prisma.user.upsert({
-    where: { id: "user-waiter" },
-    update: {},
-    create: {
+    {
       id: "user-waiter",
       name: "Waiter",
       role: "WAITER",
-      pinHash: hashPin("3333"),
+      pin: "3333",
+      password: "waiter1234",
+      username: "waiter",
+      email: "waiter@swifttill.pos",
+      phone: "03001234569",
     },
-  });
+  ];
+  for (const u of admins) {
+    await prisma.user.upsert({
+      where: { id: u.id },
+      update: {
+        username: u.username,
+        email: u.email,
+        phone: u.phone,
+        passwordHash: hashPassword(u.password),
+      },
+      create: {
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        pinHash: hashPin(u.pin),
+        passwordHash: hashPassword(u.password),
+        username: u.username,
+        email: u.email,
+        phone: u.phone,
+      },
+    });
+  }
 
   console.log("Seed complete.");
 }
