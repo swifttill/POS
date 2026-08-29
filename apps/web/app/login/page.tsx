@@ -17,3 +17,5 @@ export default async function LoginPage() {
     </main>
   );
 }
+
+export const runtime = "nodejs";

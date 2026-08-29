@@ -59,3 +59,5 @@ export async function POST(request: Request) {
     return Response.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+
+export const runtime = "nodejs";
