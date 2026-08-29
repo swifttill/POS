@@ -70,6 +70,7 @@ export default function FOHPage() {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [modifierItem, setModifierItem] = useState<MenuItemDTO | null>(null);
   const [currentShiftId, setCurrentShiftId] = useState<string | null>(null);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
   const [showPending, setShowPending] = useState(false);
   const [pending, setPending] = useState<PendingOrder[]>([]);
@@ -92,6 +93,8 @@ export default function FOHPage() {
     type: string;
     tableNumber: number | null;
     paid: number;
+    subtotal: number;
+    tax: number;
     total: number;
   } | null>(null);
 
@@ -199,14 +202,14 @@ export default function FOHPage() {
     customerAddress: orderType === "DELIVERY" ? customerAddress || null : null,
   };
 
-  async function sendToKitchen() {
-    if (lines.length === 0) return;
+  async function sendToKitchen(): Promise<string | null> {
+    if (lines.length === 0) return null;
     if (orderType === "DINE_IN" && !tableId) {
       showToast("Select a table first");
-      return;
+      return null;
     }
     try {
-      await createOrder({
+      const order = await createOrder({
         ...checkoutContext,
         shiftId: currentShiftId,
         items: linesToItems(lines),
@@ -214,11 +217,34 @@ export default function FOHPage() {
         discountPaisa: 0,
         discountReason: null,
       });
-      showToast("Order sent to kitchen");
+      showToast("Order held — sent to kitchen");
+      setActiveOrderId(order.id);
       setLines([]);
+      setTableId(null);
+      setPax(null);
       loadPending();
+      return order.id;
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Failed to send order");
+      return null;
+    }
+  }
+
+  function printBill() {
+    if (editing && editOrderId) {
+      window.open(`/bill/${editOrderId}`, "_blank");
+      return;
+    }
+    if (activeOrderId) {
+      window.open(`/bill/${activeOrderId}`, "_blank");
+      return;
+    }
+    if (lines.length) {
+      sendToKitchen().then((id) => {
+        if (id) window.open(`/bill/${id}`, "_blank");
+      });
+    } else {
+      showToast("No order to print");
     }
   }
 
@@ -233,10 +259,13 @@ export default function FOHPage() {
         discountReason: result.discountReason,
       });
       showToast("Order paid");
+      setActiveOrderId(order.id);
       setLines([]);
+      setTableId(null);
+      setPax(null);
       setPayOpen(false);
       loadPending();
-      window.open(`/orders/${order.id}/print`, "_blank");
+      window.open(`/bill/${order.id}`, "_blank");
     } catch (e) {
       throw e;
     }
@@ -273,6 +302,8 @@ export default function FOHPage() {
         type: o.type,
         tableNumber: o.table?.number ?? null,
         paid,
+        subtotal: o.subtotal ?? 0,
+        tax: o.tax ?? 0,
         total: o.total,
       });
       setShowPending(false);
@@ -588,24 +619,31 @@ export default function FOHPage() {
               </div>
 
               {!editing ? (
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-2 mt-2">
                   <button
                     onClick={sendToKitchen}
                     disabled={lines.length === 0}
                     className="btn-secondary py-3 disabled:opacity-40"
                   >
-                    Send to Kitchen
+                    Hold
+                  </button>
+                  <button
+                    onClick={printBill}
+                    disabled={lines.length === 0 && !activeOrderId}
+                    className="btn-secondary py-3 disabled:opacity-40"
+                  >
+                    Print
                   </button>
                   <button
                     onClick={() => setPayOpen(true)}
                     disabled={lines.length === 0}
                     className="btn-primary py-3 disabled:opacity-40"
                   >
-                    Pay
+                    Payment
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-2 mt-2">
                   <button
                     onClick={sendUpdate}
                     disabled={editLines.length === 0}
@@ -614,18 +652,24 @@ export default function FOHPage() {
                     Send Update
                   </button>
                   <button
+                    onClick={printBill}
+                    className="btn-secondary py-3"
+                  >
+                    Print
+                  </button>
+                  <button
                     onClick={() =>
                       setPayExisting({
                         orderId: editOrderId!,
                         existingPaid: editMeta?.paid ?? 0,
-                        subtotal: editMeta?.total ?? 0,
-                        tax: 0,
+                        subtotal: editMeta?.subtotal ?? 0,
+                        tax: editMeta?.tax ?? 0,
                         total: editMeta?.total ?? 0,
                       })
                     }
                     className="btn-primary py-3"
                   >
-                    Pay
+                    Payment
                   </button>
                 </div>
               )}
@@ -691,6 +735,7 @@ export default function FOHPage() {
               })
             }
             onVoid={(id) => setPendingVoidId(id)}
+            onPrint={(id) => window.open(`/bill/${id}`, "_blank")}
           />
         ) : null}
 
@@ -780,6 +825,7 @@ function PendingModal({
   onEdit,
   onPay,
   onVoid,
+  onPrint,
 }: {
   orders: PendingOrder[];
   currency: string;
@@ -787,6 +833,7 @@ function PendingModal({
   onEdit: (id: string) => void;
   onPay: (o: PendingOrder) => void;
   onVoid: (id: string) => void;
+  onPrint: (id: string) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur">
@@ -818,6 +865,12 @@ function PendingModal({
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => onPrint(o.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-line hover:border-brand/50"
+                  >
+                    Print
+                  </button>
                   <button
                     onClick={() => onEdit(o.id)}
                     className="text-xs px-3 py-1.5 rounded-lg border border-line hover:border-brand/50"

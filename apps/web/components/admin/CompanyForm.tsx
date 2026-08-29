@@ -98,10 +98,14 @@ export function CompanyForm({
         <button type="submit" className="btn-primary px-5 py-2.5">
           Save Settings
         </button>
-        {saved ? <span className="text-xs text-emerald-400">Saved ✓</span> : null}
+        {saved ? (
+          <span className="text-xs" style={{ color: "var(--color-success)" }}>
+            Saved ✓
+          </span>
+        ) : null}
       </div>
 
-      <style>{`.input{width:100%;background:var(--color-panel-2);border:1px solid var(--color-line);border-radius:.5rem;padding:.5rem .75rem;outline:none}.input:focus{border-color:var(--color-electric)}`}</style>
+      <style>{`.input{width:100%;background:var(--color-panel-2);border:1px solid var(--color-line);border-radius:.5rem;padding:.5rem .75rem;outline:none}.input:focus{border-color:var(--color-brand)}`}</style>
     </form>
   );
 }

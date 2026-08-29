@@ -13,5 +13,11 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "swifttill"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "swifttill-media"
+    }
   ]
 }

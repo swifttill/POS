@@ -170,6 +170,7 @@ export function MenuManager({
             <div className="flex items-center gap-3">
               <ImageField
                 label=""
+                folder="categories"
                 compact
                 value={cat.imageUrl ?? ""}
                 onUploaded={async (u) => {
@@ -324,6 +325,7 @@ function EditItemForm({
       />
       <ImageField
         label="Item image"
+        folder="items"
         value={imageUrl}
         onUploaded={(u) => setImageUrl(u)}
       />

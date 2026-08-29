@@ -1,39 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { useImageUpload } from "@/lib/useImageUpload";
 
 export function ImageField({
   label,
   value,
   onUploaded,
+  folder = "org",
   compact = false,
 }: {
   label: string;
-  value: string;
-  onUploaded: (url: string) => void;
+  value: string | null;
+  onUploaded: (url: string | null) => void;
+  folder?: string;
   compact?: boolean;
 }) {
-  const [busy, setBusy] = useState(false);
+  const { upload, busy } = useImageUpload(folder);
   const [err, setErr] = useState<string | null>(null);
 
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setBusy(true);
     setErr(null);
     try {
-      const fd = new FormData();
-      fd.append("file", f);
-      const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
-      const d = await r.json();
-      if (!r.ok) setErr(d.error ?? "Upload failed");
-      else onUploaded(d.url as string);
-    } catch {
-      setErr("Upload failed");
+      const url = await upload(f);
+      if (url) onUploaded(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed");
     } finally {
-      setBusy(false);
+      e.target.value = "";
     }
   }
+
+  const size = compact ? 40 : 56;
 
   return (
     <label className="block text-sm">
@@ -45,18 +45,18 @@ export function ImageField({
             src={value}
             alt=""
             className="rounded-lg border border-line object-cover"
-            style={{ width: compact ? 40 : 56, height: compact ? 40 : 56 }}
+            style={{ width: size, height: size }}
           />
         ) : (
           <div
-            className="rounded-lg border border-line bg-panel-2"
-            style={{ width: compact ? 40 : 56, height: compact ? 40 : 56 }}
+            className="rounded-lg border border-dashed border-line bg-panel-2"
+            style={{ width: size, height: size }}
           />
         )}
         <input
           type="file"
           accept="image/*"
-          onChange={upload}
+          onChange={onPick}
           disabled={busy}
           className="text-xs max-w-[160px]"
         />
@@ -66,14 +66,14 @@ export function ImageField({
         {value ? (
           <button
             type="button"
-            onClick={() => onUploaded("")}
-            className="text-xs text-muted hover:text-pink-400"
+            onClick={() => onUploaded(null)}
+            className="text-xs text-muted hover:text-danger"
           >
             Clear
           </button>
         ) : null}
       </div>
-      {err ? <div className="text-xs text-pink-400 mt-1">{err}</div> : null}
+      {err ? <div className="text-xs text-danger mt-1">{err}</div> : null}
     </label>
   );
 }

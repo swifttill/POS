@@ -142,3 +142,17 @@ body {
   color: var(--color-muted);
   font-weight: 600;
 }
+
+/* Bill / receipt route (separate full-screen page) */
+.bill-page {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Print: thermal receipt / bill */
+@media print {
+  html, body { overflow: visible !important; background: #fff !important; }
+  .no-print { display: none !important; }
+  .bill-sheet { box-shadow: none !important; max-width: 100% !important; border-radius: 0 !important; }
+  @page { margin: 8mm; }
+}
