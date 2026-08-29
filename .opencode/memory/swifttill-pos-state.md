@@ -50,7 +50,7 @@
 - **KOT print** on send-to-kitchen — DONE. `app/kot/[id]/page.tsx` server-renders station-grouped ticket (no prices, modifiers + notes), auto-prints via `components/AutoPrint.tsx`. Wired into `sendToKitchen` + `sendUpdate` (window.open /kot/[id]). Verified live: groups GRILL/FRY/COLD, no prices.
 - **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
 - **Reports suite** — DONE for current scope at `/admin/reports`: date/tender/category filters, summary, tender split, category & top-item bars, **Print / PDF** via browser print/save-as-PDF, **Export Excel** via CSV download, and report type selector for Daily/Custom, X (Shift), Z (End of Day). Verified API returns summary and page renders Print/PDF + Export Excel live.
-- **Settings** — org page `/admin/company` exists; profile + searchable optional-feature toggles NOT done.
+- **Settings** — DONE: `/admin/settings` hub with org profile, searchable feature cards (GST, KOT, bills, images, tables, reports, roles, deals, privacy) and search.
 - **Deals admin** — `admin/deals` page exists; verify image upload wired.
 - **Security features** using logo/name — NOT started.
 - Admin menu/category management with image upload — DONE (MenuManager + ImageField). Tables — DONE.

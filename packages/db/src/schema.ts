@@ -149,6 +149,7 @@ export const deals = pgTable("Deal", {
   type: text("type").notNull(),
   value: integer("value").notNull().default(0),
   active: boolean("active").notNull().default(true),
+  imageUrl: text("imageUrl"),
   startsAt: timestamp("startsAt", { mode: "date" }),
   endsAt: timestamp("endsAt", { mode: "date" }),
 });

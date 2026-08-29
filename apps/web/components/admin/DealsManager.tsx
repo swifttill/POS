@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPaisa } from "@/lib/money";
-import { createDeal } from "@/lib/admin-actions";
+import { createDeal, updateDeal } from "@/lib/admin-actions";
+import { ImageField } from "@/components/admin/ImageField";
 
 interface DealView {
   id: string;
@@ -11,6 +12,7 @@ interface DealView {
   type: "BOGO" | "BUNDLE" | "PERCENT";
   value: number;
   active: boolean;
+  imageUrl: string | null;
   items: { id: string; name: string }[];
 }
 interface ItemOption {
@@ -19,7 +21,7 @@ interface ItemOption {
 }
 
 const inputCls =
-  "w-full bg-panel-2 border border-line rounded-lg px-3 py-2 outline-none focus:border-electric text-sm";
+  "w-full bg-panel-2 border border-line rounded-lg px-3 py-2 outline-none focus:border-brand text-sm";
 
 export function DealsManager({
   deals,
@@ -33,6 +35,13 @@ export function DealsManager({
   const [type, setType] = useState<"BOGO" | "BUNDLE" | "PERCENT">("BUNDLE");
   const [value, setValue] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingType, setEditingType] = useState<"BOGO" | "BUNDLE" | "PERCENT">("BUNDLE");
+  const [editingValue, setEditingValue] = useState("");
+  const [editingImageUrl, setEditingImageUrl] = useState("");
+  const [editingActive, setEditingActive] = useState(true);
 
   function toggle(id: string) {
     setSelected((s) =>
@@ -47,10 +56,39 @@ export function DealsManager({
       type,
       valueRupees: Number(value || 0),
       itemIds: selected,
+      imageUrl: imageUrl || null,
     });
     setName("");
     setValue("");
     setSelected([]);
+    setImageUrl("");
+    router.refresh();
+  }
+
+  async function startEdit(d: DealView) {
+    setEditingId(d.id);
+    setEditingName(d.name);
+    setEditingType(d.type);
+    setEditingValue(d.value > 0 ? String(d.value) : "");
+    setEditingImageUrl(d.imageUrl || "");
+    setEditingActive(d.active);
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    await updateDeal(editingId, {
+      name: editingName.trim(),
+      type: editingType,
+      valueRupees: Number(editingValue || 0),
+      imageUrl: editingImageUrl || null,
+      active: editingActive,
+    });
+    setEditingId(null);
+    router.refresh();
+  }
+
+  async function toggleActive(d: DealView) {
+    await updateDeal(d.id, { active: !d.active });
     router.refresh();
   }
 
@@ -58,18 +96,24 @@ export function DealsManager({
     <div className="space-y-6">
       <div className="card p-4 space-y-3">
         <div className="text-xs uppercase tracking-widest text-muted">
-          New Deal
+          {editingId ? "Edit Deal" : "New Deal"}
         </div>
         <div className="flex flex-wrap gap-2">
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={editingId ? editingName : name}
+            onChange={(e) =>
+              editingId ? setEditingName(e.target.value) : setName(e.target.value)
+            }
             placeholder="Deal name (e.g. Lunch Special)"
             className={inputCls + " flex-1 min-w-[180px]"}
           />
           <select
-            value={type}
-            onChange={(e) => setType(e.target.value as any)}
+            value={editingId ? editingType : type}
+            onChange={(e) =>
+              editingId
+                ? setEditingType(e.target.value as any)
+                : setType(e.target.value as any)
+            }
             className={inputCls + " w-32"}
           >
             <option value="BUNDLE">Bundle (fixed)</option>
@@ -77,13 +121,27 @@ export function DealsManager({
             <option value="PERCENT">Percent off</option>
           </select>
           <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={type === "PERCENT" ? "e.g. 10 (%)" : "Package Rs"}
+            value={editingId ? editingValue : value}
+            onChange={(e) =>
+              editingId
+                ? setEditingValue(e.target.value)
+                : setValue(e.target.value)
+            }
+            placeholder={
+              (editingId ? editingType : type) === "PERCENT"
+                ? "e.g. 10 (%)"
+                : "Package Rs"
+            }
             inputMode="decimal"
             className={inputCls + " w-40"}
           />
         </div>
+        <ImageField
+          folder="deals"
+          value={editingId ? editingImageUrl : imageUrl}
+          onUploaded={(u) => (editingId ? setEditingImageUrl(u ?? "") : setImageUrl(u ?? ""))}
+          label="Deal image"
+        />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {itemOptions.map((i) => {
             const on = selected.includes(i.id);
@@ -94,7 +152,7 @@ export function DealsManager({
                 className={`text-left text-sm px-3 py-2 rounded-lg border ${
                   on
                     ? "glow-border"
-                    : "border-line hover:border-electric/50"
+                    : "border-line hover:border-brand/50"
                 }`}
               >
                 {on ? "✓ " : ""}
@@ -103,17 +161,45 @@ export function DealsManager({
             );
           })}
         </div>
-        <button onClick={submit} className="btn-primary px-5 py-2">
-          Create Deal
-        </button>
+        {editingId ? (
+          <div className="flex gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editingActive}
+                onChange={(e) => setEditingActive(e.target.checked)}
+              />
+              Active
+            </label>
+            <button onClick={saveEdit} className="btn-primary px-5 py-2">
+              Save
+            </button>
+            <button
+              onClick={() => setEditingId(null)}
+              className="btn-secondary px-5 py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button onClick={submit} className="btn-primary px-5 py-2">
+            Create Deal
+          </button>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {deals.map((d) => (
           <div key={d.id} className="card p-4">
-            <div className="flex items-center justify-between">
+            <ImageField
+              folder="deals"
+              compact
+              value={d.imageUrl}
+              onUploaded={(u) => updateDeal(d.id, { imageUrl: u })}
+            />
+            <div className="flex items-center justify-between mt-2">
               <h3 className="font-bold">{d.name}</h3>
-              <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-electric/20 text-electric">
+              <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-brand-soft text-brand">
                 {d.type}
               </span>
             </div>
@@ -126,6 +212,24 @@ export function DealsManager({
             </div>
             <div className="text-xs text-muted mt-2">
               {d.items.map((i) => i.name).join(", ")}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => startEdit(d)}
+                className="text-xs px-2 py-1 rounded border border-line hover:border-brand/50"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => toggleActive(d)}
+                className={`text-xs px-2 py-1 rounded border ${
+                  d.active
+                    ? "text-success border-success hover:bg-success/10"
+                    : "text-muted border-line hover:border-muted/50"
+                }`}
+              >
+                {d.active ? "Disable" : "Enable"}
+              </button>
             </div>
           </div>
         ))}

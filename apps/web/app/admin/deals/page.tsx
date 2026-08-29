@@ -18,6 +18,7 @@ export default async function DealsPage() {
     type: d.type as "BOGO" | "BUNDLE" | "PERCENT",
     value: Number(d.value),
     active: d.active,
+    imageUrl: d.imageUrl ?? null,
     items: d.items.map((i) => ({
       id: i.id,
       name: i.menuItem.name,
