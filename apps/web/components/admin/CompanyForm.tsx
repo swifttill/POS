@@ -34,7 +34,7 @@ export function CompanyForm({
       currency: form.currency,
       gstEnabled: form.gstEnabled,
       gstRate: Number(form.gstRate),
-      logoUrl: form.logoUrl || null,
+      logoUrl: form.logoUrl,
     });
     setSaved(true);
   }

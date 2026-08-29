@@ -327,7 +327,7 @@ function EditItemForm({
         label="Item image"
         folder="items"
         value={imageUrl}
-        onUploaded={(u) => setImageUrl(u)}
+        onUploaded={(u) => setImageUrl(u ?? "")}
       />
       <div className="flex gap-2">
         <button
