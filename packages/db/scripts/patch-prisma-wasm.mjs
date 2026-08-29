@@ -58,10 +58,17 @@ if (!src.includes(needle)) {
   process.exit(0);
 }
 
-const replacement = `const assets = (globalThis as any).ASSETS
+const replacement = `const wasmPath = "/prisma/query_compiler_bg.postgresql.wasm"
+    const assets = (globalThis as any).ASSETS
     if (assets && typeof assets.fetch === "function") {
-      const res = await assets.fetch(new Request("https://prisma.local/prisma/query_compiler_bg.postgresql.wasm"))
+      const res = await assets.fetch(new Request("https://prisma.local" + wasmPath))
       if (!res.ok) throw new Error("prisma wasm asset load failed: " + res.status)
+      return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
+    }
+    const origin = process.env.PRISMA_WASM_ORIGIN
+    if (origin) {
+      const res = await fetch(origin + wasmPath)
+      if (!res.ok) throw new Error("prisma wasm fetch failed: " + res.status)
       return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
     }
     const spec = "@prisma/client/runtime/query_compiler_bg.postgresql.wasm-base64.mjs"
