@@ -1,13 +1,17 @@
 import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaClient, type Order, type OrderItem } from "@prisma/client";
 import { EscPos } from "./escpos";
 import { buildBill } from "./bill";
 import { sendToPrinter } from "./printers";
 
 // Load repo-root .env so DATABASE_URL (local or Neon) is available.
-dotenv.config({ path: path.resolve(process.cwd(), "..", "..", ".env") });
+dotenv.config({
+  path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../.env"),
+  override: true,
+});
 
 interface AgentConfig {
   pollIntervalMs: number;
