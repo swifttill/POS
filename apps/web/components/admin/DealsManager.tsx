@@ -194,6 +194,7 @@ export function DealsManager({
             <ImageField
               folder="deals"
               compact
+              label="Img"
               value={d.imageUrl}
               onUploaded={(u) => updateDeal(d.id, { imageUrl: u })}
             />
