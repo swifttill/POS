@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { getSession, clearSession } from "@/lib/auth";
+import ChangePinButton from "@/components/ChangePinButton";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +47,13 @@ export default async function AdminLayout({
           <Link href="/admin/shifts" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
             Shifts
           </Link>
+          <Link href="/admin/users" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+            Users
+          </Link>
           <span className="ml-2 px-3 py-1.5 text-muted">
             {user.name} · <span className="uppercase">{user.role}</span>
           </span>
+          {user.permissions.resetOwnPin ? <ChangePinButton /> : null}
           <form action={logout}>
             <button className="ml-1 px-3 py-1.5 rounded-lg border border-line hover:border-electric/50">
               Logout
