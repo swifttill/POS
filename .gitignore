@@ -21,3 +21,7 @@ public/assets/uploads/*
 # Editor / OS
 .vscode/
 .idea/
+
+# Cloudflare
+.wrangler/
+.vercel/
