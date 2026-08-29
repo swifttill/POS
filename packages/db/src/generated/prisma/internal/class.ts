@@ -80,21 +80,17 @@ config.compilerWasm = {
   getRuntime: async () => await import("@prisma/client/runtime/query_compiler_bg.postgresql.mjs"),
 
   getQueryCompilerWasmModule: async () => {
-    const wasmPath = "/prisma/query_compiler_bg.postgresql.wasm"
-    // opennext stores Cloudflare bindings (incl. ASSETS) under this global symbol.
-    const cfCtx = (globalThis as any)[Symbol.for("__cloudflare-context__")]
-    const assets = cfCtx?.env?.ASSETS ?? (globalThis as any).ASSETS
-    if (assets && typeof assets.fetch === "function") {
-      const res = await assets.fetch(new Request("http://assets.local" + wasmPath))
-      if (!res.ok) throw new Error("prisma wasm asset load failed: " + res.status)
-      return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
+    // On Cloudflare Workers, runtime WASM code generation is disallowed by the
+    // embedder, so we cannot compile the wasm from bytes at runtime. Instead the
+    // worker imports the wasm module directly (precompiled at upload by wrangler)
+    // and exposes it as a global. opennext does not allow the wasm_modules config
+    // on ES module workers, so the import is injected into .open-next/worker.js by
+    // scripts/inject-prisma-wasm.mjs.
+    const precompiled = (globalThis as any).__PRISMA_WASM__
+    if (precompiled && typeof precompiled === "object") {
+      return precompiled as WebAssembly.Module
     }
-    const origin = process.env.PRISMA_WASM_ORIGIN
-    if (origin) {
-      const res = await fetch(origin + wasmPath)
-      if (!res.ok) throw new Error("prisma wasm fetch failed: " + res.status)
-      return new WebAssembly.Module(new Uint8Array(await res.arrayBuffer()))
-    }
+    // Local Node / dev fallback: compile from the inlined base64.
     const spec = "@prisma/client/runtime/query_compiler_bg.postgresql.wasm-base64.mjs"
     const mod = await import(spec)
     return await decodeBase64AsWasm(mod.wasm)
