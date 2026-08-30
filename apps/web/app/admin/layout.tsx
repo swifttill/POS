@@ -19,6 +19,8 @@ export default async function AdminLayout({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
+  // Only ADMIN and MANAGER may enter the back office; waiters use the POS.
+  if (user.role === "WAITER") redirect("/pos");
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,34 +31,50 @@ export default async function AdminLayout({
             Admin
           </span>
         </div>
-        <nav className="flex items-center gap-1 text-sm">
+<nav className="flex items-center gap-1 text-sm">
           <Link href="/admin" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
             Dashboard
           </Link>
-          <Link href="/admin/menu" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Menu
-          </Link>
-          <Link href="/admin/deals" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Deals
-          </Link>
-          <Link href="/admin/company" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Company
-          </Link>
-          <Link href="/admin/settings" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Settings
-          </Link>
-          <Link href="/admin/reports" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Reports
-          </Link>
-          <Link href="/admin/shifts" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Shifts
-          </Link>
-          <Link href="/admin/users" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Users
-          </Link>
-          <Link href="/admin/tables" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
-            Tables
-          </Link>
+          {user.permissions.manageMenu ? (
+            <Link href="/admin/menu" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Menu
+            </Link>
+          ) : null}
+          {user.permissions.manageDeals ? (
+            <Link href="/admin/deals" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Deals
+            </Link>
+          ) : null}
+          {user.permissions.manageCompany ? (
+            <Link href="/admin/company" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Company
+            </Link>
+          ) : null}
+          {user.permissions.manageUsers ? (
+            <Link href="/admin/settings" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Settings
+            </Link>
+          ) : null}
+          {user.permissions.viewReports ? (
+            <Link href="/admin/reports" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Reports
+            </Link>
+          ) : null}
+          {user.permissions.closeShift ? (
+            <Link href="/admin/shifts" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Shifts
+            </Link>
+          ) : null}
+          {user.permissions.manageUsers ? (
+            <Link href="/admin/users" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Users
+            </Link>
+          ) : null}
+          {user.permissions.manageTables ? (
+            <Link href="/admin/tables" className="px-3 py-1.5 rounded-lg hover:bg-panel-2">
+              Tables
+            </Link>
+          ) : null}
           <span className="ml-2 px-3 py-1.5 text-muted">
             {user.name} · <span className="uppercase">{user.role}</span>
           </span>

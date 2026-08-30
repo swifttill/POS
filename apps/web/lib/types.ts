@@ -61,8 +61,14 @@ export interface DealDTO {
   id: string;
   name: string;
   type: "BOGO" | "BUNDLE" | "PERCENT";
-  value: number; // paisa
-  items: { id: string; name: string; price: number; imageUrl: string | null }[];
+  value: number; // BUNDLE: paisa; PERCENT: percent as integer
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    imageUrl: string | null;
+    quantity: number;
+  }[];
 }
 
 // Client-side cart shape

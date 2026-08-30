@@ -166,18 +166,32 @@ export default function FOHPage() {
 
   function addDeal(deal: DealDTO) {
     const target = editOrderId ? setEditLines : setLines;
+    let unitPrice = deal.value;
+    if (deal.type === "BOGO") {
+      // Buy one get one: charge the cost of a single (highest) item once.
+      const prices = deal.items.map((i) => i.price);
+      unitPrice = prices.length ? Math.max(...prices) : 0;
+    } else if (deal.type === "PERCENT") {
+      unitPrice = 0; // informational line — % off applied at bill/discount
+    }
+    const note =
+      deal.type === "PERCENT" ? `${deal.value}% off order` : "";
     target((prev) => [
       ...prev,
       {
         lineId: uid(),
         menuItemId: "",
         name: deal.name,
-        unitPrice: deal.value,
+        unitPrice,
         quantity: 1,
-        notes: "",
+        notes: note,
         seat: null,
         station: "MAIN",
-        modifiers: deal.items.map((i) => ({ id: i.id, name: i.name, priceDelta: 0 })),
+        modifiers: deal.items.map((i) => ({
+          id: i.id,
+          name: `${i.quantity}× ${i.name}`,
+          priceDelta: 0,
+        })),
       },
     ]);
   }

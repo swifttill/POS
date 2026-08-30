@@ -42,7 +42,7 @@ export interface MenuPayload {
     name: string;
     type: "BOGO" | "BUNDLE" | "PERCENT";
     value: number;
-    items: { id: string; name: string; price: number; imageUrl: string | null }[];
+    items: { id: string; name: string; price: number; imageUrl: string | null; quantity: number }[];
   }[];
 }
 
@@ -125,6 +125,7 @@ export async function getMenuPayload(): Promise<MenuPayload> {
         name: di.menuItem.name,
         price: di.menuItem.price,
         imageUrl: di.menuItem.imageUrl,
+        quantity: di.quantity,
       })),
     })),
   };

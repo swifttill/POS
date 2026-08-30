@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,10 @@ const LOCAL_DIR = "assets/uploads";
 
 export async function POST(request: Request) {
   try {
+    const allowed = await requirePermission("manageMenu");
+    if (!allowed) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) {

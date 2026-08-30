@@ -11,15 +11,25 @@ import {
   deals,
   dealItems,
   eq,
+  asc,
   sql,
 } from "@swift-till/db";
 import { paisaFromRupees } from "@/lib/money";
 import { deleteImage } from "@/lib/cloudinary";
+import { requirePermission } from "@/lib/auth";
+import type { Permission } from "@/lib/permissions";
+
+async function guard(perm: Permission): Promise<void> {
+  const user = await requirePermission(perm);
+  if (!user) throw new Error("You do not have permission to do this.");
+}
 
 async function nextSort(table: any): Promise<number> {
   const r = await db.select({ c: sql<number>`count(*)` }).from(table);
   return Number(r[0]?.c ?? 0) + 1;
 }
+
+export type DealType = "BOGO" | "BUNDLE" | "PERCENT";
 
 export async function updateCompany(data: {
   name?: string;
@@ -30,6 +40,7 @@ export async function updateCompany(data: {
   gstRate?: number;
   logoUrl?: string;
 }) {
+  await guard("manageCompany");
   await db
     .insert(companies)
     .values({ id: "singleton", ...data })
@@ -37,23 +48,49 @@ export async function updateCompany(data: {
   revalidatePath("/admin/company");
 }
 
-export async function createCategory(name: string, slug: string) {
+export async function createCategory(
+  name: string,
+  slug: string,
+  imageUrl?: string | null
+) {
+  await guard("manageMenu");
   await db.insert(categories).values({
     name,
     slug,
+    imageUrl: imageUrl || null,
     sortOrder: await nextSort(categories),
   });
   revalidatePath("/admin/menu");
 }
 
+export async function moveCategory(id: string, direction: "up" | "down") {
+  await guard("manageMenu");
+  const rows = await db.query.categories.findMany({
+    orderBy: asc(categories.sortOrder),
+  });
+  const idx = rows.findIndex((r) => r.id === id);
+  const swap = direction === "up" ? idx - 1 : idx + 1;
+  if (idx < 0 || swap < 0 || swap >= rows.length) return;
+  const a = rows[idx];
+  const b = rows[swap];
+  await db
+    .update(categories)
+    .set({ sortOrder: b.sortOrder })
+    .where(eq(categories.id, a.id));
+  await db
+    .update(categories)
+    .set({ sortOrder: a.sortOrder })
+    .where(eq(categories.id, b.id));
+  revalidatePath("/admin/menu");
+}
+
 export async function deleteCategory(id: string) {
+  await guard("manageMenu");
   const category = await db.query.categories.findFirst({
     where: eq(categories.id, id),
     with: { items: { columns: { imageUrl: true } } },
   });
   if (category) {
-    // Delete the category image AND every item image it cascades (Cloudinary
-    // assets must be removed, not just the DB row).
     if (category.imageUrl) await deleteImage(category.imageUrl);
     for (const it of category.items) {
       if (it.imageUrl) await deleteImage(it.imageUrl);
@@ -66,9 +103,16 @@ export async function deleteCategory(id: string) {
 
 export async function updateCategory(
   id: string,
-  data: { name?: string; imageUrl?: string | null }
+  data: { name?: string; imageUrl?: string | null; sortOrder?: number }
 ) {
-  await db.update(categories).set(data).where(eq(categories.id, id));
+  await guard("manageMenu");
+  const set: Record<string, any> = {};
+  if (data.name !== undefined) set.name = data.name;
+  if (data.imageUrl !== undefined) set.imageUrl = data.imageUrl;
+  if (data.sortOrder !== undefined) set.sortOrder = data.sortOrder;
+  if (Object.keys(set).length) {
+    await db.update(categories).set(set).where(eq(categories.id, id));
+  }
   revalidatePath("/admin/menu");
 }
 
@@ -79,7 +123,9 @@ export async function createItem(input: {
   station: string;
   description?: string;
   available?: boolean;
+  imageUrl?: string | null;
 }) {
+  await guard("manageMenu");
   await db.insert(menuItems).values({
     name: input.name,
     price: paisaFromRupees(input.priceRupees),
@@ -87,6 +133,7 @@ export async function createItem(input: {
     printerStation: input.station as any,
     description: input.description || null,
     available: input.available ?? true,
+    imageUrl: input.imageUrl || null,
     sortOrder: await nextSort(menuItems),
   });
   revalidatePath("/admin/menu");
@@ -101,8 +148,10 @@ export async function updateItem(
     description?: string;
     available?: boolean;
     imageUrl?: string | null;
+    categoryId?: string;
   }
 ) {
+  await guard("manageMenu");
   const data: any = { ...input };
   if (input.priceRupees !== undefined)
     data.price = paisaFromRupees(input.priceRupees);
@@ -113,7 +162,34 @@ export async function updateItem(
   revalidatePath("/admin/menu");
 }
 
+export async function moveItem(id: string, direction: "up" | "down") {
+  await guard("manageMenu");
+  const item = await db.query.menuItems.findFirst({
+    where: eq(menuItems.id, id),
+  });
+  if (!item) return;
+  const rows = await db.query.menuItems.findMany({
+    where: eq(menuItems.categoryId, item.categoryId),
+    orderBy: asc(menuItems.sortOrder),
+  });
+  const idx = rows.findIndex((r) => r.id === id);
+  const swap = direction === "up" ? idx - 1 : idx + 1;
+  if (idx < 0 || swap < 0 || swap >= rows.length) return;
+  const a = rows[idx];
+  const b = rows[swap];
+  await db
+    .update(menuItems)
+    .set({ sortOrder: b.sortOrder })
+    .where(eq(menuItems.id, a.id));
+  await db
+    .update(menuItems)
+    .set({ sortOrder: a.sortOrder })
+    .where(eq(menuItems.id, b.id));
+  revalidatePath("/admin/menu");
+}
+
 export async function deleteItem(id: string) {
+  await guard("manageMenu");
   const item = await db.query.menuItems.findFirst({ where: eq(menuItems.id, id) });
   if (item?.imageUrl) await deleteImage(item.imageUrl);
   await db.delete(menuItems).where(eq(menuItems.id, id));
@@ -127,6 +203,7 @@ export async function addModifierGroup(input: {
   maxSelect: number;
   required: boolean;
 }) {
+  await guard("manageMenu");
   await db.insert(modifierGroups).values({
     menuItemId: input.menuItemId,
     name: input.name,
@@ -138,11 +215,32 @@ export async function addModifierGroup(input: {
   revalidatePath("/admin/menu");
 }
 
+export async function updateModifierGroup(
+  id: string,
+  data: {
+    name?: string;
+    minSelect?: number;
+    maxSelect?: number;
+    required?: boolean;
+  }
+) {
+  await guard("manageMenu");
+  await db.update(modifierGroups).set(data).where(eq(modifierGroups.id, id));
+  revalidatePath("/admin/menu");
+}
+
+export async function deleteModifierGroup(id: string) {
+  await guard("manageMenu");
+  await db.delete(modifierGroups).where(eq(modifierGroups.id, id));
+  revalidatePath("/admin/menu");
+}
+
 export async function addModifier(input: {
   groupId: string;
   name: string;
   priceDeltaRupees: number;
 }) {
+  await guard("manageMenu");
   await db.insert(modifiers).values({
     modifierGroupId: input.groupId,
     name: input.name,
@@ -152,30 +250,55 @@ export async function addModifier(input: {
   revalidatePath("/admin/menu");
 }
 
+export async function updateModifier(
+  id: string,
+  data: { name?: string; priceDeltaRupees?: number }
+) {
+  await guard("manageMenu");
+  const set: Record<string, any> = {};
+  if (data.name !== undefined) set.name = data.name;
+  if (data.priceDeltaRupees !== undefined)
+    set.priceDelta = paisaFromRupees(data.priceDeltaRupees);
+  await db.update(modifiers).set(set).where(eq(modifiers.id, id));
+  revalidatePath("/admin/menu");
+}
+
 export async function deleteModifier(id: string) {
+  await guard("manageMenu");
   await db.delete(modifiers).where(eq(modifiers.id, id));
   revalidatePath("/admin/menu");
 }
 
 export async function createDeal(input: {
   name: string;
-  type: "BOGO" | "BUNDLE" | "PERCENT";
-  valueRupees: number;
-  itemIds: string[];
+  type: DealType;
+  value: number;
+  active?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  items: { menuItemId: string; quantity: number }[];
 }) {
+  await guard("manageDeals");
   const deal = await db
     .insert(deals)
     .values({
       name: input.name,
       type: input.type,
-      value: paisaFromRupees(input.valueRupees),
-      active: true,
+      value:
+        input.type === "PERCENT" ? Math.round(input.value) : paisaFromRupees(input.value),
+      active: input.active ?? true,
+      startsAt: input.startsAt ? new Date(input.startsAt) : null,
+      endsAt: input.endsAt ? new Date(input.endsAt) : null,
     })
     .returning();
   const dealId = deal[0].id;
-  if (input.itemIds.length) {
+  if (input.items.length) {
     await db.insert(dealItems).values(
-      input.itemIds.map((menuItemId) => ({ dealId, menuItemId }))
+      input.items.map((i) => ({
+        dealId,
+        menuItemId: i.menuItemId,
+        quantity: i.quantity,
+      }))
     );
   }
   revalidatePath("/admin/deals");
@@ -183,15 +306,50 @@ export async function createDeal(input: {
 
 export async function updateDeal(
   id: string,
-  data: { name?: string; type?: string; valueRupees?: number; active?: boolean }
+  data: {
+    name?: string;
+    type?: DealType;
+    value?: number;
+    active?: boolean;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    items?: { menuItemId: string; quantity: number }[];
+  }
 ) {
+  await guard("manageDeals");
   const update: Record<string, any> = {};
   if (data.name !== undefined) update.name = data.name;
   if (data.type !== undefined) update.type = data.type;
-  if (data.valueRupees !== undefined) update.value = paisaFromRupees(data.valueRupees);
+  if (data.value !== undefined)
+    update.value =
+      (data.type ?? "BUNDLE") === "PERCENT"
+        ? Math.round(data.value)
+        : paisaFromRupees(data.value);
   if (data.active !== undefined) update.active = data.active;
+  if (data.startsAt !== undefined)
+    update.startsAt = data.startsAt ? new Date(data.startsAt) : null;
+  if (data.endsAt !== undefined)
+    update.endsAt = data.endsAt ? new Date(data.endsAt) : null;
   if (Object.keys(update).length) {
     await db.update(deals).set(update).where(eq(deals.id, id));
-    revalidatePath("/admin/deals");
   }
+  if (data.items) {
+    await db.delete(dealItems).where(eq(dealItems.dealId, id));
+    if (data.items.length) {
+      await db.insert(dealItems).values(
+        data.items.map((i) => ({
+          dealId: id,
+          menuItemId: i.menuItemId,
+          quantity: i.quantity,
+        }))
+      );
+    }
+  }
+  revalidatePath("/admin/deals");
+}
+
+export async function deleteDeal(id: string) {
+  await guard("manageDeals");
+  await db.delete(deals).where(eq(deals.id, id));
+  revalidatePath("/admin/deals");
 }

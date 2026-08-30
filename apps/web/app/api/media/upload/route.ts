@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp"];
 const MAX_BYTES = 3 * 1024 * 1024; // 3MB after client resize
@@ -8,8 +8,13 @@ const FOLDERS = ["items", "categories", "org", "misc"];
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSession();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Image uploads back office work: only managers may write media.
+    const manager = await requirePermission("manageMenu");
+    const dealManager = await requirePermission("manageDeals");
+    const companyManager = await requirePermission("manageCompany");
+    if (!manager && !dealManager && !companyManager) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const form = await req.formData();
     const file = form.get("file");

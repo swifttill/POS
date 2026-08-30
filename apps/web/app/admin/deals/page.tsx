@@ -1,4 +1,4 @@
-import { db, deals, dealItems, menuItems, asc } from "@swift-till/db";
+import { db, deals, menuItems, asc } from "@swift-till/db";
 import { DealsManager } from "@/components/admin/DealsManager";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +18,23 @@ export default async function DealsPage() {
     type: d.type as "BOGO" | "BUNDLE" | "PERCENT",
     value: Number(d.value),
     active: d.active,
+    startsAt: d.startsAt ? d.startsAt.toISOString().slice(0, 10) : null,
+    endsAt: d.endsAt ? d.endsAt.toISOString().slice(0, 10) : null,
     items: d.items.map((i) => ({
-      id: i.id,
+      id: i.menuItem.id,
       name: i.menuItem.name,
+      price: Number(i.menuItem.price),
+      imageUrl: i.menuItem.imageUrl,
+      quantity: i.quantity,
     })),
   }));
 
-  const itemOptions = items.map((i) => ({ id: i.id, name: i.name }));
+  const itemOptions = items.map((i) => ({
+    id: i.id,
+    name: i.name,
+    price: Number(i.price),
+    imageUrl: i.imageUrl,
+  }));
 
   return (
     <div>
