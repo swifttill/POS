@@ -13,16 +13,25 @@ export interface TableDTO {
 export function TableMap({
   tables,
   selectedId,
-  occupiedIds,
+  occupiedAt,
   onSelect,
 }: {
   tables: TableDTO[];
   selectedId: string | null;
-  occupiedIds?: string[];
+  occupiedAt?: Record<string, string>;
   onSelect: (id: string) => void;
 }) {
   const zones = Array.from(new Set(tables.map((t) => t.zone ?? "Floor")));
-  const occupied = new Set(occupiedIds ?? []);
+  const now = Date.now();
+
+  function elapsed(timestamp: string): string {
+    const ms = now - new Date(timestamp).getTime();
+    if (ms < 60000) return "just now";
+    const m = Math.floor(ms / 60000);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
 
   return (
     <div className="space-y-4">
@@ -36,15 +45,14 @@ export function TableMap({
               .filter((t) => (t.zone ?? "Floor") === zone)
               .map((t) => {
                 const active = t.id === selectedId;
-                const isOccupied = occupied.has(t.id);
+                const occupied = occupiedAt?.[t.id] ? true : false;
+                const since = occupiedAt?.[t.id];
                 return (
                   <button
                     key={t.id}
                     onClick={() => onSelect(t.id)}
-                    className={`card p-3 text-left transition ${
-                      active
-                        ? "glow-border"
-                        : isOccupied
+                    className={`card p-3 text-left transition aspect-square rounded-xl ${
+                      active ? "glow-border bg-brand/5" : occupied
                         ? "border-danger/40 bg-danger/5"
                         : "hover:border-brand/60"
                     }`}
@@ -56,8 +64,10 @@ export function TableMap({
                           <span className="text-muted font-normal"> · {t.name}</span>
                         ) : null}
                       </span>
-                      {isOccupied ? (
-                        <span className="text-[9px] uppercase text-danger">occupied</span>
+                      {occupied ? (
+                        <span className="text-[9px] uppercase text-danger">
+                          {elapsed(since ?? "")}
+                        </span>
                       ) : null}
                     </div>
                     <div className="text-xs text-muted">{t.seats} seats</div>

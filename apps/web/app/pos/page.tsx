@@ -136,6 +136,20 @@ export default function FOHPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const occupiedAt = useMemo<Record<string, string>>(
+    () => {
+      const result: Record<string, string> = {};
+      pending
+        .filter((o) => o.tableNumber != null && o.type === "DINE_IN")
+        .forEach((o) => {
+          const table = tables.find((t) => t.number === o.tableNumber);
+          if (table) result[table.id] = o.createdAt;
+        });
+      return result;
+    },
+    [pending, tables]
+  );
+
   const occupiedTableIds = useMemo(
     () => new Set(pending.filter((o) => o.tableNumber != null && o.type === "DINE_IN").map((o) => tables.find((t) => t.number === o.tableNumber)?.id).filter(Boolean) as string[]),
     [pending, tables]
@@ -491,14 +505,25 @@ export default function FOHPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="flex items-center justify-between px-4 py-3 border-b border-line">
           <span className="font-semibold text-ink">SwiftTill POS</span>
-          <div className="flex items-center gap-3">
-            <input
-              value={waiter}
-              disabled={lockWaiter}
-              onChange={(e) => setWaiter(e.target.value)}
-              placeholder="Waiter name"
-              className="input w-full sm:w-44 px-3 py-1.5 text-sm disabled:opacity-50"
-            />
+<div className="flex items-center gap-3">
+              <input
+                value={waiter}
+                disabled={lockWaiter}
+                onChange={(e) => setWaiter(e.target.value)}
+                placeholder="Waiter name"
+                className="input w-full sm:w-44 px-3 py-1.5 text-sm disabled:opacity-50"
+              />
+              <span className="text-xs text-muted ml-2">Shift: {(currentShiftId ?? "—")}</span>
+              <span className="text-xs text-muted ml-2">Date: {(new Date().toLocaleDateString())}</span>
+              <span className="text-xs text-muted ml-2">Order #: {(editOrderId ?? activeOrderId) || "—"}</span>
+              <div className="flex items-center gap-2 text-xs text-muted mt-2">
+                <button onClick={() => setShowPending(true)} className="hover:text-brand">
+                  Notifications
+                </button>
+                <button onClick={() => setShowPending(true)} className="hover:text-brand ml-2">
+                  Settings
+                </button>
+              </div>
             <button
               onClick={() => setLockWaiter((v) => !v)}
               className={`text-xs px-2 py-1.5 rounded-lg border border-line ${
@@ -556,7 +581,7 @@ export default function FOHPage() {
                     <TableMap
                       tables={tables}
                       selectedId={tableId}
-                      occupiedIds={Array.from(occupiedTableIds)}
+                      occupiedAt={occupiedAt}
                       onSelect={setTableId}
                     />
                     <label className="block mt-3 text-sm">
