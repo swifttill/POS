@@ -52,7 +52,7 @@
 - **Reports suite** — DONE for current scope at `/admin/reports`: date/tender/category filters, summary, tender split, category & top-item bars, **Print / PDF** via browser print/save-as-PDF, **Export Excel** via CSV download, and report type selector for Daily/Custom, X (Shift), Z (End of Day). Verified API returns summary and page renders Print/PDF + Export Excel live.
 - **Settings** — DONE: `/admin/settings` hub with org profile, searchable feature cards (GST, KOT, bills, images, tables, reports, roles, deals, privacy) and search.
 - **Deals admin** — working (create, edit, enable/disable). Image upload needs DB migration for `imageUrl` column; currently wired without images.
-- **Security features** using logo/name — NOT started.
+- **Security features** using logo/name — **SecurityLock component implemented** (`components/SecurityLock.tsx` with branded lock screen, PIN unlock via `/api/auth/unlock`, auto-lock on inactivity). Integration into POS page has JSX parsing issues (fragment/sibling rendering); component and unlock API (`/api/auth/unlock`) are ready. Next step: integrate via portal or root layout.
 - Admin menu/category management with image upload — DONE (MenuManager + ImageField). Tables — DONE.
 
 ## Next Move

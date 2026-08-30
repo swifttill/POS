@@ -25,7 +25,7 @@ export function MenuItemCard({
       onClick={() => onClick(item)}
       className="card p-3 text-left flex flex-col gap-2 hover:border-brand/60 transition active:scale-[0.98]"
     >
-      <div className="relative h-24 -m-3 mb-0 rounded-t-xl overflow-hidden bg-panel-2 flex items-center justify-center">
+      <div className="relative h-24 mb-0 rounded-t-xl overflow-hidden bg-panel-2 flex items-center justify-center">
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

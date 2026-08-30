@@ -78,11 +78,11 @@ export function SecurityLock({
     <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-surface rounded-2xl border border-line p-8 shadow-2xl text-center">
         <Logo size={56} variant="full" showText />
-        <h2 className="text-xl font-bold mt-4">{BRAND_NAME} is locked</h2>
-        <p className="text-muted text-sm mt-2">
+        <h2 className="text-xl font-bold mt-4 transition-opacity duration-300">{BRAND_NAME} is locked</h2>
+        <p className="text-muted text-sm mt-2 transition-opacity duration-300">
           Auto-locked after {timeoutMinutes} min of inactivity. Enter your PIN to continue.
         </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-3 transition-all duration-300">
           <input
             type="password"
             inputMode="numeric"
@@ -100,7 +100,7 @@ export function SecurityLock({
         </form>
         <button
           onClick={() => router.replace("/login")}
-          className="mt-4 text-sm text-muted hover:text-text"
+          className="mt-4 text-sm text-muted hover:text-text transition-colors duration-300"
         >
           Switch user (logout)
         </button>

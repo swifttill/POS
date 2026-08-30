@@ -21,7 +21,7 @@ export function DealCard({
   const cover = deal.items[0]?.imageUrl ?? null;
   return (
     <div className="card p-3 flex flex-col gap-2">
-      <div className="relative h-24 -m-3 mb-0 rounded-t-xl overflow-hidden bg-gradient-to-br from-panel-2 to-abyss flex items-center justify-center">
+      <div className="relative h-24 mb-0 rounded-t-xl overflow-hidden bg-gradient-to-br from-panel-2 to-abyss flex items-center justify-center">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cover} alt={deal.name} className="h-full w-full object-cover" />

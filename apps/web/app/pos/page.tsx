@@ -273,6 +273,29 @@ export default function FOHPage() {
     }
   }
 
+  async function splitPayment(result: PayResult) {
+    if (!editOrderId) return;
+    try {
+      await fetch(`/api/orders/${editOrderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payments: result.payments,
+          discountPaisa: result.discountPaisa,
+          discountReason: result.discountReason,
+        }),
+      });
+      showToast("Split payment recorded");
+      setPayOpen(false);
+      setPayExisting(null);
+      setEditOrderId(null);
+      setEditLines([]);
+      loadPending();
+    } catch (e) {
+      throw e;
+    }
+  }
+
   async function openEdit(id: string) {
     try {
       const res = await fetch(`/api/orders/${id}`);
@@ -460,7 +483,7 @@ export default function FOHPage() {
               disabled={lockWaiter}
               onChange={(e) => setWaiter(e.target.value)}
               placeholder="Waiter name"
-              className="input w-44 px-3 py-1.5 text-sm disabled:opacity-50"
+              className="input w-full sm:w-44 px-3 py-1.5 text-sm disabled:opacity-50"
             />
             <button
               onClick={() => setLockWaiter((v) => !v)}
@@ -645,6 +668,20 @@ export default function FOHPage() {
                   >
                     Payment
                   </button>
+                  {editOrderId && (
+                    <button
+                      onClick={() => setPayExisting({
+                        orderId: editOrderId,
+                        existingPaid: editMeta?.paid ?? 0,
+                        subtotal: editMeta?.subtotal ?? 0,
+                        tax: editMeta?.tax ?? 0,
+                        total: editMeta?.total ?? 0,
+                      })}
+                      className="btn-outline py-3 disabled:opacity-40"
+                    >
+                      Split Payment
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2 mt-2">
