@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "deploy": "pnpm --filter @swift-till/web deploy",
+    "deploy": "pnpm --filter @swift-till/web run deploy",
     "lint": "turbo run lint",
     "agent": "pnpm --filter @swift-till/agent start",
     "agent:typecheck": "pnpm --filter @swift-till/agent typecheck",
