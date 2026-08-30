@@ -1,78 +1,9 @@
 "use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { MenuItemDTO } from "@/lib/types";
+import type { MenuItemDTO } from "@/lib/types";
 import { formatPaisa } from "@/lib/money";
-
-const STATION_COLORS: Record<string, string> = {
-  BAR: "bg-brand-soft text-brand",
-  GRILL: "bg-orange-100 text-orange-700",
-  FRY: "bg-amber-100 text-amber-700",
-  MAIN: "bg-brand-soft text-brand",
-  DESSERT: "bg-pink-100 text-pink-700",
-  EXPO: "bg-success-soft text-success",
-};
-
-export function MenuItemCard({
-  item,
-  onClick,
-  onCustomize,
-}: {
-  item: MenuItemDTO;
-  onClick: (item: MenuItemDTO) => void;
-  onCustomize?: (item: MenuItemDTO) => void;
-}) {
-  const hasMods = item.modifierGroups.length > 0;
-  return (
-    <button
-      onClick={() => onClick(item)}
-      className="card p-3 text-left flex flex-col gap-2 hover:border-brand/60 transition active:scale-[0.98]"
-    >
-      <div className="relative h-24 mb-0 rounded-t-xl overflow-hidden bg-panel-2 flex items-center justify-center">
-        {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <span className="text-3xl opacity-30">🍽️</span>
-        )}
-        {item.printerStation ? (
-          <span
-            className={`absolute top-2 right-2 text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold ${
-              STATION_COLORS[item.printerStation] ?? "bg-panel-2 text-muted"
-            }`}
-          >
-            {item.printerStation}
-          </span>
-        ) : null}
-      </div>
-      <div className="flex items-start justify-between gap-2 min-w-0">
-        <div className="font-semibold leading-tight truncate">{item.name}</div>
-      </div>
-      {item.description ? (
-        <div className="text-xs text-muted line-clamp-2">{item.description}</div>
-      ) : null}
-      <div className="flex items-center justify-between mt-auto">
-        <div className="font-bold text-brand">{formatPaisa(item.price)}</div>
-        {hasMods ? (
-          <div className="flex items-center gap-1">
-            {onCustomize ? (
-              <button
-                onClick={() => onCustomize?.(item)}
-                className="text-[10px] text-brand hover:text-brand/80 flex-1 rounded border border-brand/20 py-1"
-              >
-                Customize
-              </button>
-            ) : (
-              <div className="text-[10px] text-muted">+ modifiers</div>
-            )}
-          </div>
-        ) : null}
-      </div>
-    </button>
-  );
+export function MenuItemCard({ item, onClick }: { item: MenuItemDTO; onClick: (item: MenuItemDTO) => void }) {
+  return <button type="button" onClick={() => onClick(item)} className="group text-left bg-white border border-line rounded-xl overflow-hidden hover:border-brand/60 hover:shadow-sm transition active:scale-[.99] disabled:opacity-50" disabled={!item.available}>
+    <div className="relative aspect-[1.35/1] bg-panel overflow-hidden">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-[1.02] transition"/> : <div className="w-full h-full flex items-center justify-center text-muted text-sm">No image</div>}{!item.available ? <span className="absolute inset-x-0 bottom-0 bg-black/65 text-white text-[11px] text-center py-1">Unavailable</span> : null}</div>
+    <div className="p-3"><div className="font-semibold text-[14px] leading-5 line-clamp-2 min-h-10">{item.name}</div>{item.description ? <div className="text-xs text-muted line-clamp-1 mt-1">{item.description}</div> : null}<div className="flex items-center justify-between mt-2"><span className="font-bold text-brand">{formatPaisa(item.price)}</span>{item.modifierGroups.length ? <span className="text-[11px] text-muted">Customize</span> : null}</div></div>
+  </button>;
 }

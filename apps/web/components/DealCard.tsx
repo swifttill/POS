@@ -27,14 +27,14 @@ export function DealCard({
       : "Buy 1 Get 1";
   return (
     <div className="card p-3 flex flex-col gap-2">
-      <div className="relative h-24 mb-0 rounded-t-xl overflow-hidden bg-gradient-to-br from-panel-2 to-abyss flex items-center justify-center">
+      <div className="relative h-24 mb-0 rounded-t-xl overflow-hidden bg-panel flex items-center justify-center">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cover} alt={deal.name} className="h-full w-full object-cover" />
         ) : (
           <span className="text-3xl opacity-30">🏷️</span>
         )}
-        <span className="absolute top-2 right-2 text-[10px] uppercase px-2 py-0.5 rounded-full bg-electric/20 text-electric">
+        <span className="absolute top-2 right-2 text-[10px] uppercase px-2 py-0.5 rounded-full bg-brand-soft text-brand">
           {TYPE_LABEL[deal.type]}
         </span>
       </div>

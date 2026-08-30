@@ -1,85 +1,8 @@
 "use client";
-
 import type { CartLine } from "@/lib/types";
 import { formatPaisa } from "@/lib/money";
-
-export function Cart({
-  lines,
-  currency,
-  onQty,
-  onRemove,
-}: {
-  lines: CartLine[];
-  currency: string;
-  onQty: (lineId: string, delta: number) => void;
-  onRemove: (lineId: string) => void;
-}) {
-  if (lines.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-muted p-6">
-        <div className="text-4xl mb-2">🧾</div>
-        <div className="text-sm">Cart is empty</div>
-        <div className="text-xs mt-1">
-          Tap menu items to start an order.
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {lines.map((l) => {
-        const modTotal = l.modifiers.reduce((s, m) => s + m.priceDelta, 0);
-        const lineTotal = (l.unitPrice + modTotal) * l.quantity;
-        return (
-          <div key={l.lineId} className="card p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="font-semibold truncate">{l.name}</div>
-                {l.modifiers.length > 0 ? (
-                  <div className="text-xs text-muted">
-                    {l.modifiers.map((m) => m.name).join(", ")}
-                  </div>
-                ) : null}
-                {l.notes ? (
-                  <div className="text-xs text-muted italic">“{l.notes}”</div>
-                ) : null}
-                {l.seat ? (
-                  <div className="text-[10px] text-muted">Seat {l.seat}</div>
-                ) : null}
-              </div>
-              <div className="text-right shrink-0">
-                <div className="font-bold">
-                  {formatPaisa(lineTotal, currency)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <button
-                onClick={() => onRemove(l.lineId)}
-                className="text-xs text-muted hover:text-pink-400"
-              >
-                Remove
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onQty(l.lineId, -1)}
-                  className="card w-7 h-7 font-bold"
-                >
-                  −
-                </button>
-                <span className="w-6 text-center font-bold">{l.quantity}</span>
-                <button
-                  onClick={() => onQty(l.lineId, 1)}
-                  className="card w-7 h-7 font-bold"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+import { PosIcon } from "./PosIcon";
+export function Cart({ lines, currency, onQty, onRemove }: { lines: CartLine[]; currency: string; onQty: (lineId: string, delta: number) => void; onRemove: (lineId: string) => void }) {
+  if (!lines.length) return <div className="h-full min-h-56 flex flex-col items-center justify-center text-center px-8"><div className="w-12 h-12 rounded-full bg-panel flex items-center justify-center text-muted mb-3"><PosIcon name="order" size={22}/></div><div className="font-semibold text-sm">No items in this order</div><div className="text-xs text-muted mt-1">Select a menu item to start billing.</div></div>;
+  return <div className="space-y-2">{lines.map(l => { const modTotal=l.modifiers.reduce((s,m)=>s+m.priceDelta,0); const lineTotal=(l.unitPrice+modTotal)*l.quantity; return <div key={l.lineId} className="rounded-lg border border-line bg-white p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><div className="font-semibold text-sm truncate">{l.name}</div>{l.modifiers.length ? <div className="text-[11px] text-muted mt-1">{l.modifiers.map(m=>m.name).join(", ")}</div>:null}{l.notes?<div className="text-[11px] text-muted mt-1 italic">{l.notes}</div>:null}</div><div className="font-bold text-sm whitespace-nowrap">{formatPaisa(lineTotal,currency)}</div></div><div className="flex items-center justify-between mt-2"><button onClick={()=>onRemove(l.lineId)} className="text-xs text-muted hover:text-danger">Remove</button><div className="flex items-center gap-1.5"><button aria-label="Decrease" onClick={()=>onQty(l.lineId,-1)} className="w-7 h-7 rounded-md border border-line bg-surface-2 flex items-center justify-center"><PosIcon name="minus" size={14}/></button><span className="w-6 text-center text-sm font-semibold">{l.quantity}</span><button aria-label="Increase" onClick={()=>onQty(l.lineId,1)} className="w-7 h-7 rounded-md bg-brand text-white flex items-center justify-center"><PosIcon name="plus" size={14}/></button></div></div></div>})}</div>;
 }
