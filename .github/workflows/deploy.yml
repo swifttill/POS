@@ -18,15 +18,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build & deploy
-        run: pnpm --filter @swift-till/web run deploy
+        run: pnpm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          NEXT_PUBLIC_BASE_URL: https://desie.cloud
+          NEXT_PUBLIC_BASE_URL: https://swifttill.malik-chatgpt26436.workers.dev
           NEXT_PUBLIC_APP_NAME: SwiftTill POS
       - name: Set DATABASE_URL secret
         if: success()
-        run: echo "$DATABASE_URL" | pnpm --filter @swift-till/web exec wrangler secret put DATABASE_URL
+        run: echo "$DATABASE_URL" | pnpm exec wrangler secret put DATABASE_URL
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
