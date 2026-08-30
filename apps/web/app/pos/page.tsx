@@ -455,54 +455,39 @@ export default function FOHPage() {
 
   return (
     <SecurityLock timeoutMinutes={5}>
-      <div className="h-screen flex">
-        <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
-        <div className="h-14 px-4 flex items-center border-b border-line">
-          <Logo />
-        </div>
-        <nav className="p-3 space-y-1 text-sm">
-          <button
-            onClick={() => router.replace("/pos")}
-            className="w-full text-left px-3 py-2 rounded-lg bg-brand-soft text-brand font-medium"
-          >
-            POS
-          </button>
-          <button
-            onClick={() => {
-              loadPending();
-              setShowPending(true);
-            }}
-            className="w-full text-left px-3 py-2 rounded-lg hover:bg-panel-2 flex items-center justify-between"
-          >
-            Orders
-            {pending.length ? (
-              <span className="text-[10px] bg-brand text-white rounded-full px-1.5">
-                {pending.length}
-              </span>
-            ) : null}
-          </button>
-          <a href="/admin" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
-            Admin
-          </a>
-          <a href="/admin/tables" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
-            Tables
-          </a>
-          <a href="/admin/users" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
-            Users
-          </a>
-          <a href="/admin/reports" className="block px-3 py-2 rounded-lg hover:bg-panel-2">
-            Reports
-          </a>
-          <button
-            onClick={logout}
-            className="w-full text-left px-3 py-2 rounded-lg hover:bg-panel-2 text-danger"
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
+      <div className="h-screen flex flex-col">
+        <header className="flex items-center justify-between px-4 py-3 border-b border-line">
+          <div className="flex items-center gap-4">
+            <Logo size={28} />
+            <span className="text-xs uppercase tracking-widest text-muted">
+              POS
+            </span>
+          </div>
+          <nav className="flex items-center gap-1 text-sm">
+            <button
+              onClick={() => router.replace("/admin")}
+              className="px-4 py-1.5 rounded-lg border border-line hover:border-brand/50"
+            >
+              Dashboard
+            </button>
+            <span className="ml-2 px-3 py-1.5 text-muted">
+              Waiter · WAITER
+            </span>
+            <form action={logout}>
+              <button className="ml-1 px-3 py-1.5 rounded-lg border border-line hover:border-danger/50">
+                Logout
+              </button>
+            </form>
+            <button
+              onClick={() => router.replace("/")}
+              className="ml-2 px-3 py-1.5 rounded-lg btn-primary"
+            >
+              POS →
+            </button>
+          </nav>
+        </header>
 
-      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 min-h-0 grid grid-cols-12 gap-3 p-3">
         <header className="flex items-center justify-between px-4 py-3 border-b border-line">
           <span className="font-semibold text-ink">SwiftTill POS</span>
 <div className="flex items-center gap-3">
