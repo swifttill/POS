@@ -1,6 +1,8 @@
 "use client";
 
-import type { MenuItemDTO } from "@/lib/types";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { MenuItemDTO } from "@/lib/types";
 import { formatPaisa } from "@/lib/money";
 
 const STATION_COLORS: Record<string, string> = {
@@ -15,9 +17,11 @@ const STATION_COLORS: Record<string, string> = {
 export function MenuItemCard({
   item,
   onClick,
+  onCustomize,
 }: {
   item: MenuItemDTO;
   onClick: (item: MenuItemDTO) => void;
+  onCustomize?: (item: MenuItemDTO) => void;
 }) {
   const hasMods = item.modifierGroups.length > 0;
   return (
@@ -55,7 +59,18 @@ export function MenuItemCard({
       <div className="flex items-center justify-between mt-auto">
         <div className="font-bold text-brand">{formatPaisa(item.price)}</div>
         {hasMods ? (
-          <div className="text-[10px] text-muted">+ modifiers</div>
+          <div className="flex items-center gap-1">
+            {onCustomize ? (
+              <button
+                onClick={() => onCustomize?.(item)}
+                className="text-[10px] text-brand hover:text-brand/80 flex-1 rounded border border-brand/20 py-1"
+              >
+                Customize
+              </button>
+            ) : (
+              <div className="text-[10px] text-muted">+ modifiers</div>
+            )}
+          </div>
         ) : null}
       </div>
     </button>

@@ -16,20 +16,18 @@ export function OrderTypeTabs({
   onChange: (v: OrderType) => void;
 }) {
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-3 gap-2">
       {TABS.map((t) => {
         const active = t.value === value;
         return (
           <button
             key={t.value}
             onClick={() => onChange(t.value)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
-              active
-                ? "btn-primary"
-                : "card text-muted hover:text-text"
+            className={`rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-sm font-semibold transition ${
+              active ? "btn-primary" : "card text-muted hover:text-text"
             }`}
           >
-            <span className="mr-1.5">{t.icon}</span>
+            <span className="text-base">{t.icon}</span>
             {t.label}
           </button>
         );
