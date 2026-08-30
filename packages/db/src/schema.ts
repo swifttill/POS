@@ -213,6 +213,7 @@ export const orders = pgTable(
       .$onUpdate(() => new Date()),
     billedAt: timestamp("billedAt", { mode: "date" }),
     closedAt: timestamp("closedAt", { mode: "date" }),
+    kotPrinted: boolean("kotPrinted").notNull().default(false),
     billPrinted: boolean("billPrinted").notNull().default(false),
     billQueuedAt: timestamp("billQueuedAt", { mode: "date" }),
     shiftId: text("shiftId").references(() => shifts.id, { onDelete: "set null" }),
@@ -297,8 +298,6 @@ export const categoriesRelations = relations(categories, ({ many, one }) => ({
 export const menuItemsRelations = relations(menuItems, ({ many, one }) => ({
   modifierGroups: many(modifierGroups),
   category: one(categories, { fields: [menuItems.categoryId], references: [categories.id] }),
-  recipes: many(recipes),
-  ingredients: many(ingredients),
 }));
 export const modifierGroupsRelations = relations(modifierGroups, ({ many, one }) => ({
   modifiers: many(modifiers),
@@ -323,7 +322,6 @@ export const orderItemsRelations = relations(orderItems, ({ many, one }) => ({
   modifiers: many(orderItemModifiers),
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
   menuItem: one(menuItems, { fields: [orderItems.menuItemId], references: [menuItems.id] }),
-  modifierOptions: many(modifierOptions),
 }));
 export const orderItemModifiersRelations = relations(orderItemModifiers, ({ one }) => ({
   orderItem: one(orderItems, { fields: [orderItemModifiers.orderItemId], references: [orderItems.id] }),
@@ -332,35 +330,6 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   order: one(orders, { fields: [payments.orderId], references: [orders.id] }),
 }));
 export const shiftsRelations = relations(shifts, ({ many }) => ({ orders: many(orders) }));
-export const recipesRelations = relations(recipes, ({ many, one }) => ({
-  menuItem: one(menuItems, { fields: [recipes.menuItemId], references: [menuItems.id] }),
-  ingredient: one(ingredients, { fields: [recipes.ingredientId], references: [ingredients.id] }),
-}));
-export const ingredientsRelations = relations(ingredients, ({ many }) => ({ recipes: many(recipes), stockMovements: many(stockMovements), purchases: many(purchases) }));
-export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({ ingredient: one(ingredients), purchase: one(purchases), order: one(orders) }));
-export const purchasesRelations = relations(purchases, ({ one }) => ({ supplier: one(suppliers), ingredient: one(ingredients) }));
-export const suppliersRelations = relations(suppliers, ({ many }) => ({ purchases: many(purchases) }));
-export const customersRelations = relations(customers, ({ many }) => ({ orders: many(orders), loyaltyEntries: many(loyaltyEntries), feedback: many(feedback) }));
-export const ordersRelationsExtended = relations(orders, ({ many, one }) => ({
-  items: many(orderItems),
-  payments: many(payments),
-  table: one(restaurantTables, { fields: [orders.tableId], references: [restaurantTables.id] }),
-  shift: one(shifts, { fields: [orders.shiftId], references: [shifts.id] }),
-  delivery: one(deliveries),
-  customer: one(customers, { fields: [orders.customerId], references: [customers.id] }),
-}));
-export const deliveriesRelations = relations(deliveries, ({ one }) => ({ rider: one(riders), order: one(orders) }));
-export const ridersRelations = relations(riders, ({ many }) => ({ deliveries: many(deliveries) }));
-export const loyaltyEntriesRelations = relations(loyaltyEntries, ({ one }) => ({ customer: one(customers) }));
-export const feedbackRelations = relations(feedback, ({ one }) => ({ customer: one(customers) }));
-export const notificationsRelations = relations(notifications, ({ many }) => ({ triggeredBy: many(users) }));
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({ user: one(users) }));
-export const branchOfficesRelations = relations(branchOffices, ({ many }) => ({ orders: many(orders), inventorySnapshots: many(inventorySnapshots) }));
-export const inventorySnapshotsRelations = relations(inventorySnapshots, ({ one }) => ({ branchOffice: one(branchOffices), ingredient: one(ingredients) }));
-export const settingsRelations = relations(settings, ({ one }) => ({ branchOffice: one(branchOffices) }));
-export const modulePermissionsRelations = relations(modulePermissions, ({ one }) => ({ role: one(roles) }));
-export const roleRelations = relations(roles, ({ many }) => ({ modulePermissions: many(modulePermissions), users: many(users) }));
-export const usersRelationsExtended = relations(users, ({ many }) => ({ sessions: many(sessions), roles: many(roles), auditLogs: many(auditLogs) }));
 
 export type UserRow = InferSelectModel<typeof users>;
 export type SessionRow = InferSelectModel<typeof sessions>;

@@ -218,7 +218,7 @@ export default function FOHPage() {
         discountPaisa: 0,
         discountReason: null,
       });
-      showToast("Order held ΓÇö sent to kitchen");
+      showToast("Order held — sent to kitchen");
       setActiveOrderId(order.id);
       setLines([]);
       setTableId(null);
@@ -411,7 +411,7 @@ export default function FOHPage() {
   if (loading) {
     return (
       <main className="h-screen flex items-center justify-center">
-        <div className="text-muted animate-pulse">Loading SwiftTillΓÇª</div>
+        <div className="text-muted animate-pulse">Loading SwiftTill…</div>
       </main>
     );
   }
@@ -426,7 +426,7 @@ export default function FOHPage() {
   }
 
   return (
-    <>
+    <SecurityLock timeoutMinutes={5}>
       <div className="h-screen flex">
         <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
         <div className="h-14 px-4 flex items-center border-b border-line">
@@ -492,7 +492,7 @@ export default function FOHPage() {
               }`}
               title="Lock waiter"
             >
-              {lockWaiter ? "≡ƒöÆ" : "≡ƒöô"}
+              {lockWaiter ? "🔒" : "🔓"}
             </button>
             {!editing ? (
               <button
@@ -522,11 +522,11 @@ export default function FOHPage() {
                     }}
                     className="text-xs text-muted hover:text-text"
                   >
-                    ΓåÉ Back
+                    ← Back
                   </button>
                 </div>
                 <div className="text-sm text-muted mb-1">
-                  {editMeta?.type} {editMeta?.tableNumber ? `┬╖ T${editMeta.tableNumber}` : ""}
+                  {editMeta?.type} {editMeta?.tableNumber ? `· T${editMeta.tableNumber}` : ""}
                 </div>
                 <div className="text-sm text-muted mb-3">
                   Paid {formatPaisa(editMeta?.paid ?? 0, currency)} /{" "}
@@ -576,7 +576,7 @@ export default function FOHPage() {
                 ) : null}
                 {orderType === "TAKEAWAY" ? (
                   <div className="mt-3 text-sm text-muted">
-                    Quick counter sale ΓÇö send to kitchen, pay at pickup.
+                    Quick counter sale — send to kitchen, pay at pickup.
                   </div>
                 ) : null}
               </>
@@ -796,6 +796,7 @@ export default function FOHPage() {
         ) : null}
       </div>
     </div>
+    </SecurityLock>
   );
 }
 
@@ -882,7 +883,7 @@ function PendingModal({
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-bold">Pending Orders</h2>
           <button onClick={onClose} className="text-muted hover:text-text text-xl">
-            ├ù
+            ×
           </button>
         </div>
         {orders.length === 0 ? (
@@ -898,11 +899,11 @@ function PendingModal({
                     {o.type === "DINE_IN" && o.tableNumber
                       ? `Table ${o.tableNumber}`
                       : o.type}
-                    {o.tableName ? ` ┬╖ ${o.tableName}` : ""}
+                    {o.tableName ? ` · ${o.tableName}` : ""}
                   </div>
                   <div className="text-xs text-muted">
-                    {o.itemCount} items ┬╖ {formatPaisa(o.total, currency)}
-                    {o.paid > 0 ? ` ┬╖ paid ${formatPaisa(o.paid, currency)}` : ""}
+                    {o.itemCount} items · {formatPaisa(o.total, currency)}
+                    {o.paid > 0 ? ` · paid ${formatPaisa(o.paid, currency)}` : ""}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -937,7 +938,6 @@ function PendingModal({
         )}
       </div>
     </div>
-    <SecurityLock timeoutMinutes={5} />
-  </>
+  );
 }
 
