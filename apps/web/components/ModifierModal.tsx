@@ -35,7 +35,7 @@ export function ModifierModal({
     });
   }
 
-  const { chosenModifiers, unitPrice, valid } = useMemo(() => {
+  const { chosenModifiers, unitPrice, totalPerUnit, valid } = useMemo(() => {
     const chosen: { id: string; name: string; priceDelta: number }[] = [];
     let modTotal = 0;
     for (const g of item.modifierGroups) {
@@ -53,7 +53,7 @@ export function ModifierModal({
       const n = (selected[g.id] ?? []).length;
       return n >= g.minSelect && n <= g.maxSelect;
     });
-    return { chosenModifiers: chosen, unitPrice: unit, valid };
+    return { chosenModifiers: chosen, unitPrice: item.price, totalPerUnit: unit, valid };
   }, [item, selected]);
 
   function confirm() {
@@ -185,7 +185,7 @@ export function ModifierModal({
             disabled={!valid}
             className="btn-primary px-4 py-3 flex-1 disabled:opacity-40"
           >
-            Add · {formatPaisa(unitPrice * quantity)}
+            Add · {formatPaisa(totalPerUnit * quantity)}
           </button>
         </div>
       </div>

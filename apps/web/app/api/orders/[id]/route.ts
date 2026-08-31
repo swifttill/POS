@@ -12,7 +12,7 @@ import {
   asc,
 } from "@swift-till/db";
 import { gstAmount } from "@/lib/money";
-import { requirePermission } from "@/lib/auth";
+import { authorize, getSession } from "@/lib/auth";
 import type { Station } from "@/lib/types";
 
 interface IncomingModifier {
@@ -39,6 +39,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, id),
@@ -82,6 +84,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
     const body = (await request.json()) as {
       addItems?: IncomingItem[];
@@ -115,16 +119,36 @@ export async function PATCH(
     let discountBy = order.discountBy;
     let discountReason = order.discountReason;
     if (body.discountPaisa != null) {
-      const manager = await requirePermission("discount");
-      if (!manager) {
-        return NextResponse.json(
-          { error: "Permission required to apply discounts" },
-          { status: 401 }
-        );
+      let newDiscount = Math.max(0, Math.floor(body.discountPaisa));
+      // A payment-only call (submitEditPayment) always sends discountPaisa,
+      // and 0 when no discount was approved. If the order already carries a
+      // manager-applied discount, do NOT erase it nor demand the "discount"
+      // permission just to record a normal payment.
+      if (newDiscount === 0) {
+        newDiscount = order.discountPaisa; // carry the existing discount forward
       }
-      discountPaisa = Math.max(0, Math.floor(body.discountPaisa));
-      discountBy = manager.name;
-      discountReason = body.discountReason ?? null;
+      if (newDiscount > order.discountPaisa) {
+        // Applying / increasing a discount requires manager approval.
+        const auth = await authorize("discount");
+        if (auth.status === 401) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+        if (auth.status === 403) {
+          return NextResponse.json(
+            { error: "Permission required to apply discounts" },
+            { status: 403 }
+          );
+        }
+        discountBy = auth.user.name;
+        discountReason = body.discountReason ?? null;
+      } else if (newDiscount < order.discountPaisa) {
+        // Reducing / removing a discount clears the approver attribution.
+        discountBy = null;
+        discountReason = newDiscount > 0 ? (body.discountReason ?? null) : null;
+      } else if (body.discountReason !== undefined) {
+        discountReason = body.discountReason;
+      }
+      discountPaisa = newDiscount;
     }
 
     // --- Add new items (recompute from authoritative DB prices) ---
@@ -188,8 +212,6 @@ export async function PATCH(
           );
         }
       }
-      // New items mean the kitchen needs a fresh KOT.
-      await db.update(orders).set({ kotPrinted: false }).where(eq(orders.id, id));
     }
 
     // --- Update quantities / notes on existing lines ---
@@ -237,14 +259,35 @@ export async function PATCH(
     const total = discountedSubtotal + tax;
 
     // --- Record payments (pay / partial) ---
+    // Server-side integrity: only positive amounts, and never allow recorded
+    // payments to exceed the order total (cash overpayment is returned as
+    // change, not recorded — so revenue can never be inflated).
     if (body.payments?.length) {
-      await db.insert(payments).values(
-        body.payments.map((p) => ({
-          orderId: id,
-          tender: p.tender,
-          amount: p.amount,
-        }))
-      );
+      const alreadyPaid = (await db.query.payments.findMany({
+        where: eq(payments.orderId, id),
+      })).reduce((s, p) => s + p.amount, 0);
+      const room = Math.max(0, total - alreadyPaid);
+
+      let stillRoom = room;
+      const toInsert: IncomingPayment[] = [];
+      for (const p of body.payments) {
+        const amt = Math.max(0, Math.floor(p.amount));
+        if (amt <= 0) continue;
+        const applied = Math.min(amt, stillRoom);
+        if (applied <= 0) continue;
+        toInsert.push({ tender: p.tender, amount: applied });
+        stillRoom -= applied;
+      }
+
+      if (toInsert.length) {
+        await db.insert(payments).values(
+          toInsert.map((p) => ({
+            orderId: id,
+            tender: p.tender,
+            amount: p.amount,
+          }))
+        );
+      }
     }
     const allPayments = await db.query.payments.findMany({
       where: eq(payments.orderId, id),

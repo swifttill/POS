@@ -45,23 +45,52 @@
 ## Backend (stable)
 - `POST /api/orders` (no payment→OPEN/KOT; full→BILLED); `GET /api/orders?status=OPEN` (paid/editable/tableNumber/number); `PATCH /api/orders/[id]` (add/update/remove items, manager discount, payments→BILLED); `POST /api/orders/[id]/void`. Tables CRUD (manager). DB fixes earlier: added `Order.number` column + computed next; added `DEFAULT CURRENT_TIMESTAMP` to NOT-NULL timestamps.
 
+## Audit Fixes (STEP 19) — IMPLEMENTED
+P0 functional/correctness pass over the existing approved UI (no redesign; billing printer preserved).
+- **P0.1/P0.2** — Edit-order state: `addItem`/`addDeal`/`subtotal` use `(editing?editLines:lines)`.
+- **P0.4** — Modifier double-charge fixed in `ModifierModal.tsx` (unitPrice = base only).
+- **19C/19D** — POS totals + payment source use LIVE totals; `subtotal`/`tax` added to `PendingOrder`.
+- **19E/19F/19G** — `PayModal.submit()` caps each tender at balance; cash overpayment → change (not revenue); split cash+card/online supported; payments filtered `amount>0`.
+- **19I** — ONE TABLE = ONE ACTIVE DINE-IN order: frontend `handleTableSelect` opens existing order; server `POST /api/orders` returns 409 if table already OPEN.
+- **69K = KOT/kitchen workflow REMOVED** (billing printer KEPT):
+  - Deleted `/app/kot/[id]/page.tsx`, `/api/orders/[id]/kot/route.ts`, `components/AutoPrint.tsx`.
+  - Agent `packages/agent/src/index.ts`: removed `buildKOT`, `pollOnce`, KOT polling; KEPT `printBills` + `config.billPrinter` (billing only).
+  - Removed `kotPrinted` sets in POST/PATCH order routes; removed "Reprint KOT" from OrdersModal + SettingsHub "Kitchen printing" card + KITCHEN TICKETS section in `/orders/[id]/print` + `.kot-page/.kot-sheet` CSS.
+  - **`printerStation` KEPT** (schema/routing metadata — not active KOT workflow; do not drop).
+- **P0.8 Payment integrity** — Signed amounts server-side: PATCH `/api/orders/[id]` filters `amount>0` and caps recorded payments so `paid` never exceeds `total` (revenue can't inflate); reads `paid` from DB (never stale frontend state); partial payment → OPEN, full → BILLED (existing status enum, no invented statuses).
+- **P0.9 res.ok** — Added proper handling to: POS `sendUpdate`, `submitEditPayment`, `voidOrder`; admin `shifts` open/close; `users` deactivate; `tables` saveEdit/remove. (Others already compliant: api.ts, PayModal, ChangePin/Password, LoginForm, SecurityLock, ManagerPinModal.)
+- **P0.10 Server-side perms** — New `authorize(perm)` in `lib/auth.ts` returns 401 (unauthenticated) vs 403 (forbidden). Applied to void, refund, order POST/PATCH discount, shifts open/close (`closeShift`), tables create/update/delete (`manageMenu`). Users/media/admin-upload routes already return 403.
+- **Leftovers** — `components/CheckoutModal.tsx` is dead code (no importers) with old logic; harmless. `kotPrinted` DB column kept (no migration; no app code depends on it).
+
+## Build status
+- Local `pnpm --filter @swift-till/web run build` + agent `typecheck` PASS. `next lint` is not configured (interactive) — build's own lint/type stage passes.
+
+## Media Lifecycle (STEP 19 — COMPLETE, verified)
+- **New** `apps/web/lib/r2-media.ts`: `isR2MediaUrl(url)` (`/media/` prefix) + `deleteR2Media(url)` (best-effort `env.MEDIA.delete` via dynamic `@opennextjs/cloudflare` import, never throws, returns bool; gracefully returns false offline).
+- **`apps/web/lib/admin-actions.ts`**: added `countMediaRefs(url,{excludeItemId?,excludeCategoryId?})` + `cleanupMedia(url,opts)` (skip if refs>0; R2 if `/media/` else `deleteImage`). `updateItem`/`updateCategory` capture `prev.imageUrl`, update DB, then cleanup on change. `deleteItem`/`deleteCategory` delete DB rows FIRST then cleanup media (media never removed if DB delete fails). Fixed `deleteCategory` items projection `{id,imageUrl}`.
+- **Runtime-verified (live Neon)** via temp `.mts`: FK `OrderItem.menuItemId→MenuItem` = **SET NULL** (`OrderItem_menuItemId_MenuItem_id_fk`); `MenuItem.categoryId→Category` = **CASCADE**; `OrderItem.orderId→Order` = **CASCADE**. Deleting a menu item leaves the historical orderItem intact (name/qty/price preserved, `menuItemId=null`) — **history preserved, no data loss**. Shared media (2 items + 1 category) counted 3 refs → not deletable; after excluding one item → 2 refs → preserved. `deleteR2Media` offline → false, no throw. `isR2MediaUrl` correct.
+
+## Final Runtime QA (clean `next start` production build, port 3000 free)
+- `/pos` returns **200** (earlier 500 was stale `.next` cache + port 3000 held by old dev server — not a source bug).
+- Occupied-table browser flow (headless Chrome/CDP): toast "already has an open order", edit modal opens ("Edit open order"), "Record payment" present, cart shows existing item, duplicate table → **409**. All PASS.
+- HTTP smoke: waiter create 200; duplicate 409; waiter discount 403; admin discount 200 + preserved (10000); waiter pays discounted order → **BILLED, paid==total==55000** (65000−10000, capped, verified via DB payment sum); void 401/403; refund 403; bill page 200. All PASS.
+- **Known pre-existing (REPORT, do not fix — out of scope UI):** mobile POS grid collapses at <600px — fixed `grid-cols-[240px_minmax(0,1fr)_360px]` + `overflow-hidden` squeezes center menu column to **0px** (unmodified from original design; user forbade UI redesign). `/pos` fresh-load menu shows default category only (no extra categories selected). `/media/*.webp` 404s = 4 pre-existing missing category images (not in repo; only reachable via R2 on Cloudflare) — benign, report only.
+
+## Build status
+- Local `pnpm --filter @swift-till/web run build` + agent `typecheck` PASS. `next lint` is not configured (interactive) — build's own lint/type stage passes.
+
 ## Active / Pending
-- **Typography wrapping** on POS — mostly addressed: Cart uses min-w-0/truncate; MenuItemCard restyled for light theme (removed broken `to-abyss` gradient + illegible light-tint station chips; price now `text-brand`). Cart note color `text-cyan`→`text-muted`. Residual: any other dark-theme token leftovers (`glow-text`/`glow-border`/`border-electric` now map to brand orange via globals, so on-theme).
-- **KOT print** on send-to-kitchen — DONE. `app/kot/[id]/page.tsx` server-renders station-grouped ticket (no prices, modifiers + notes), auto-prints via `components/AutoPrint.tsx`. Wired into `sendToKitchen` + `sendUpdate` (window.open /kot/[id]). Verified live: groups GRILL/FRY/COLD, no prices.
-- **Dashboard** (eposmatic-style) — DONE (/ , with privacy toggle). 
-- **Reports suite** — DONE for current scope at `/admin/reports`: date/tender/category filters, summary, tender split, category & top-item bars, **Print / PDF** via browser print/save-as-PDF, **Export Excel** via CSV download, and report type selector for Daily/Custom, X (Shift), Z (End of Day). Verified API returns summary and page renders Print/PDF + Export Excel live.
-- **Settings** — DONE: `/admin/settings` hub with org profile, searchable feature cards (GST, KOT, bills, images, tables, reports, roles, deals, privacy) and search.
-- **Deals admin** — working (create, edit, enable/disable). Image upload needs DB migration for `imageUrl` column; currently wired without images.
-- **Security features** using logo/name — **SecurityLock component implemented** (`components/SecurityLock.tsx` with branded lock screen, PIN unlock via `/api/auth/unlock`, auto-lock on inactivity). Integration into POS page has JSX parsing issues (fragment/sibling rendering); component and unlock API (`/api/auth/unlock`) are ready. Next step: integrate via portal or root layout.
-- Admin menu/category management with image upload — DONE (MenuManager + ImageField). Tables — DONE.
+- **DONE (STEP 19)**: KOT/kitchen workflow REMOVED (billing printer `config.billPrinter` KEPT); media lifecycle (R2 cleanup) implemented + verified; runtime HTTP/browser QA green on clean prod build; payment/permission/res.ok fixes in place.
+- Dashboard (/) done; Reports at /admin/reports; Settings hub done; SecurityLock integrated; admin menu/category/tables with R2 image upload done.
 
 ## Next Move
-Continue per user's "complete process" spec, verifying each via deploy:
-1. Fix POS typography wrapping.
-2. KOT print on send-to-kitchen.
-3. eposmatic-style Dashboard (New Order / Pending / Reports, privacy).
-4. Settings (profile + searchable optional features).
-5. Deals admin image upload verification + security features.
+- Real R2 object deletion + `/api/media/upload` can only run on the Cloudflare runtime (not local) — verify on deploy. Report the pre-existing mobile-grid + `/media/*` 404 findings as out-of-scope. No further code changes required for current mandate.
+
+## Relevant Files
+- `apps/web/lib/r2-media.ts` (NEW), `apps/web/lib/admin-actions.ts` (MODIFIED: media lifecycle).
+- `apps/web/app/pos/page.tsx` (occupied-table 409 handling, permission/PIN payment-void).
+- `apps/web/app/api/orders/*`, `apps/web/lib/auth.ts` (`authorize`: 401 vs 403).
+- `packages/db/.media-qa.mts` etc. were TEMP and REMOVED — clean repo (only intended changes + untracked `pos.zip`/`temp.txt`).
 
 ## Relevant Files
 - `apps/web/app/page.tsx` (FOH POS: Hold/Print/Payment, printBill, activeOrderId, editMeta).

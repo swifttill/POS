@@ -12,10 +12,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold glow-text mb-1">Settings</h1>
-      <p className="text-muted text-sm mb-6">
-        Organisation, profile and optional POS features in one place.
-      </p>
+      <div className="page-heading"><div><div className="section-title mb-2.5">Preferences</div><h1 className="page-title">Settings</h1><p className="page-subtitle">Control profile, security and optional POS behaviour from one place.</p></div></div>
       <SettingsHub
         company={{
           name: company?.name ?? "SwiftTill Restaurant",

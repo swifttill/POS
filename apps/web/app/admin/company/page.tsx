@@ -20,10 +20,7 @@ export default async function CompanyPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold glow-text mb-1">Company Setup</h1>
-      <p className="text-muted text-sm mb-6">
-        Defines your receipt header, tax rules, and branding.
-      </p>
+      <div className="page-heading"><div><div className="section-title mb-2.5">Organisation</div><h1 className="page-title">Company setup</h1><p className="page-subtitle">Manage receipt identity, tax settings, currency and restaurant branding.</p></div></div>
       <div className="card p-5 max-w-2xl">
         <CompanyForm initial={data} />
       </div>

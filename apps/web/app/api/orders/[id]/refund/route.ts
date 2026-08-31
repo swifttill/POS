@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, orders, eq } from "@swift-till/db";
-import { requirePermission, verifyPinForUser } from "@/lib/auth";
+import { authorize, verifyPinForUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +10,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requirePermission("refund");
-    if (!user) {
-      return NextResponse.json({ error: "Permission required to refund" }, { status: 401 });
+    const auth = await authorize("refund");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to process refunds" },
+        { status: 403 }
+      );
+    }
+    const user = auth.user!;
     if (user.permissions.refundRequiresPin) {
       const { pin } = (await request.json().catch(() => ({}))) as { pin?: string };
       if (!pin || !(await verifyPinForUser(user.id, pin))) {

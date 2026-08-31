@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, shifts, eq } from "@swift-till/db";
 import { buildReport } from "@/lib/reports";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authorize("closeShift");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to close a shift" },
+        { status: 403 }
+      );
+    }
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const cashEnd = body.cashEnd != null ? Math.round(Number(body.cashEnd)) : null;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, shifts, isNull, desc } from "@swift-till/db";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,16 @@ export async function GET() {
 // POST open a new shift.
 export async function POST(request: Request) {
   try {
+    const auth = await authorize("closeShift");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to open a shift" },
+        { status: 403 }
+      );
+    }
     const body = await request.json().catch(() => ({}));
     const openedBy = (body.openedBy as string) || null;
     const cashStart = Math.round(Number(body.cashStart ?? 0));

@@ -1,19 +1,40 @@
 import { NextResponse } from "next/server";
-import { db, orders, orderItems, orderItemModifiers, payments, menuItems, companies, eq, inArray, desc, sql } from "@swift-till/db";
+import { db, orders, orderItems, orderItemModifiers, payments, menuItems, companies, eq, and, or, inArray, desc, like, sql } from "@swift-till/db";
 import { gstAmount } from "@/lib/money";
-import { requirePermission } from "@/lib/auth";
+import { authorize, getSession } from "@/lib/auth";
 import type { Station } from "@/lib/types";
 
-// Recent / pending orders (for the FOH Orders panel: edit / pay / void).
+// Recent / pending orders (for the FOH Orders panel and the admin Orders screen).
+// Query params (all optional): status, type, cashier (waiterName), search.
 export async function GET(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get("status");
+    const typeFilter = searchParams.get("type");
+    const cashierFilter = searchParams.get("cashier");
+    const searchQuery = searchParams.get("search");
+
+    const conditions = [];
+    if (statusFilter) conditions.push(eq(orders.status, statusFilter));
+    if (typeFilter) conditions.push(eq(orders.type, typeFilter));
+    if (cashierFilter) conditions.push(eq(orders.waiterName, cashierFilter));
+    if (searchQuery && searchQuery.trim()) {
+      const term = `%${searchQuery.trim()}%`;
+      conditions.push(
+        or(
+          like(sql`${orders.id}`, term),
+          like(sql`${orders.number}::text`, term),
+          like(sql`lower(${orders.customerName})`, term.toLowerCase())
+        )
+      );
+    }
 
     const orderList = await db.query.orders.findMany({
       orderBy: desc(orders.createdAt),
-      limit: statusFilter === "OPEN" ? 200 : 50,
-      ...(statusFilter ? { where: eq(orders.status, statusFilter) } : {}),
+      limit: statusFilter === "OPEN" ? 200 : 200,
+      ...(conditions.length ? { where: conditions.length === 1 ? conditions[0] : and(...conditions) } : {}),
       with: {
         table: true,
         items: true,
@@ -36,6 +57,9 @@ export async function GET(request: Request) {
           createdAt: o.createdAt,
           tableNumber: o.table?.number ?? null,
           tableName: o.table?.name ?? null,
+          waiterName: o.waiterName ?? null,
+          customerName: o.customerName ?? null,
+          paymentTender: o.payments[0]?.tender ?? null,
           itemCount: o.items.length,
           editable: o.status === "OPEN" || o.status === "BILLED",
         };
@@ -82,24 +106,43 @@ interface IncomingOrder {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = (await request.json()) as IncomingOrder;
 
     if (!body.items?.length) {
       return NextResponse.json({ error: "No items" }, { status: 400 });
     }
 
+    // Business rule: ONE TABLE = ONE ACTIVE DINE-IN ORDER at a time.
+    if (body.type === "DINE_IN" && body.tableId) {
+      const existing = await db.query.orders.findFirst({
+        where: and(eq(orders.tableId, body.tableId), eq(orders.status, "OPEN")),
+      });
+      if (existing) {
+        return NextResponse.json(
+          { error: "This table already has an open order" },
+          { status: 409 }
+        );
+      }
+    }
+
+
     const discountPaisa = Math.max(0, Math.floor(body.discountPaisa ?? 0));
     // Discounts require the "discount" permission (enforced server-side).
     let discountBy: string | null = null;
     if (discountPaisa > 0) {
-      const manager = await requirePermission("discount");
-      if (!manager) {
+      const auth = await authorize("discount");
+      if (auth.status === 401) {
+        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      }
+      if (auth.status === 403) {
         return NextResponse.json(
           { error: "Permission required to apply discounts" },
-          { status: 401 }
+          { status: 403 }
         );
       }
-      discountBy = manager.name;
+      discountBy = auth.user.name;
     }
 
     // Recompute from authoritative DB prices (prevents till tampering).
@@ -203,7 +246,6 @@ export async function POST(request: Request) {
         discountReason: discountPaisa > 0 ? (body.discountReason ?? null) : null,
         discountBy,
         status: finalStatus,
-        kotPrinted: true,
         billedAt: finalStatus === "BILLED" ? new Date() : null,
       })
       .returning();
@@ -229,15 +271,20 @@ export async function POST(request: Request) {
     }
 
     if (body.payments?.length) {
-      await db
-        .insert(payments)
-        .values(
-          body.payments.map((p) => ({
-            orderId: order.id,
-            tender: p.tender,
-            amount: p.amount,
-          }))
-        );
+      const positive = body.payments
+        .map((p) => ({ tender: p.tender, amount: Math.max(0, Math.floor(p.amount)) }))
+        .filter((p) => p.amount > 0);
+      if (positive.length) {
+        await db
+          .insert(payments)
+          .values(
+            positive.map((p) => ({
+              orderId: order.id,
+              tender: p.tender,
+              amount: p.amount,
+            }))
+          );
+      }
     }
 
     const fullOrder = await db.query.orders.findFirst({

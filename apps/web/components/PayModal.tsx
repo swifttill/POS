@@ -78,17 +78,28 @@ export function PayModal({
       );
       return;
     }
+    const cashPaisa = paisaFromRupees(Number(cash) || 0);
+    const cardPaisa = paisaFromRupees(Number(card) || 0);
+    const onlinePaisa = paisaFromRupees(Number(online) || 0);
+
+    // Non-cash tenders apply the exact amount tendered; cash covers the
+    // remainder, and any cash overpayment is returned as change (not applied).
+    let cardApplied = Math.min(cardPaisa, Math.max(0, balance));
+    const cardRoom = balance - cardApplied;
+    const onlineApplied = Math.min(onlinePaisa, Math.max(0, cardRoom));
+    const appliedNonCash = cardApplied + onlineApplied;
+    const cashApplied = Math.max(0, Math.min(cashPaisa, balance - appliedNonCash));
+
+    const payments = (
+      [
+        { tender: "CASH" as Tender, amount: cashApplied },
+        { tender: "CARD" as Tender, amount: cardApplied },
+        { tender: "ONLINE" as Tender, amount: onlineApplied },
+      ]
+    ).filter((p) => p.amount > 0);
+
     setSubmitting(true);
     try {
-      const payments = [
-        { tender: "CASH" as Tender, amount: paisaFromRupees(Number(cash) || 0) },
-        { tender: "CARD" as Tender, amount: paisaFromRupees(Number(card) || 0) },
-        {
-          tender: "ONLINE" as Tender,
-          amount: paisaFromRupees(Number(online) || 0),
-        },
-      ].filter((p) => p.amount > 0);
-
       await onSubmit({
         payments,
         discountPaisa: discountApproved ? discountPaisa : 0,

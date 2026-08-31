@@ -32,6 +32,7 @@ export default function ShiftsPage() {
   const [cashStart, setCashStart] = useState("0");
   const [cashEnd, setCashEnd] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/shifts", { cache: "no-store" });
@@ -45,8 +46,9 @@ export default function ShiftsPage() {
 
   async function openShift() {
     setBusy(true);
+    setError(null);
     try {
-      await fetch("/api/shifts", {
+      const res = await fetch("/api/shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,8 +56,15 @@ export default function ShiftsPage() {
           cashStart: Math.round(Number(cashStart || 0)),
         }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d?.error ?? `Could not open shift (${res.status})`);
+        return;
+      }
       setZReport(null);
       await refresh();
+    } catch {
+      setError("Network error opening shift");
     } finally {
       setBusy(false);
     }
@@ -64,6 +73,7 @@ export default function ShiftsPage() {
   async function closeShift() {
     if (!shift) return;
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/shifts/${shift.id}/close`, {
         method: "POST",
@@ -72,9 +82,16 @@ export default function ShiftsPage() {
           cashEnd: cashEnd ? Math.round(Number(cashEnd)) : null,
         }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d?.error ?? `Could not close shift (${res.status})`);
+        return;
+      }
       const d = await res.json();
       setZReport(d.report);
       setShift(null);
+    } catch {
+      setError("Network error closing shift");
     } finally {
       setBusy(false);
     }
@@ -86,6 +103,12 @@ export default function ShiftsPage() {
       <p className="text-muted text-sm mb-6">
         Open the day, reconcile the drawer, and close with a Z-report.
       </p>
+
+      {error ? (
+        <div className="card p-3 mb-6 text-sm text-danger border-red-500/40 max-w-lg">
+          {error}
+        </div>
+      ) : null}
 
       {zReport ? (
         <div className="card p-5 max-w-lg mb-6">

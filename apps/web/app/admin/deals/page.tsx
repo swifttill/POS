@@ -38,10 +38,7 @@ export default async function DealsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold glow-text mb-1">Deals & Combos</h1>
-      <p className="text-muted text-sm mb-6">
-        Bundled packages, BOGO, and percentage discounts.
-      </p>
+      <div className="page-heading"><div><div className="section-title mb-2.5">Promotions</div><h1 className="page-title">Deals & combos</h1><p className="page-subtitle">Create bundles, BOGO offers and percentage promotions that appear directly in the POS.</p></div></div>
       <DealsManager deals={dealsView} itemOptions={itemOptions} />
     </div>
   );

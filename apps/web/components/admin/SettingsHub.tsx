@@ -32,13 +32,6 @@ export function SettingsHub({
       href: "/admin/company",
     },
     {
-      icon: "KOT",
-      name: "Kitchen printing",
-      description: "Auto-opens station-grouped KOT tickets when orders are held or updated.",
-      status: "Enabled",
-      href: "/pos",
-    },
-    {
       icon: "Bill",
       name: "Customer bill printing",
       description: "Thermal bill with logo, GST, totals, paid/balance and Print/PDF support.",

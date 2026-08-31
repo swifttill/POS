@@ -158,8 +158,18 @@ export default function UsersPage() {
 
   async function deactivate(u: UserRow) {
     if (!confirm(`Deactivate ${u.name}? They won't be able to log in.`)) return;
-    await fetch(`/api/users/${u.id}`, { method: "DELETE" });
-    await load();
+    try {
+      const res = await fetch(`/api/users/${u.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Could not deactivate user (${res.status})`);
+        return;
+      }
+      setError(null);
+      await load();
+    } catch {
+      setError("Network error");
+    }
   }
 
   async function resetPin() {

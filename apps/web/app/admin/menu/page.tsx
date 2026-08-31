@@ -83,10 +83,7 @@ export default async function MenuPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold glow-text mb-1">Menu Engineering</h1>
-      <p className="text-muted text-sm mb-6">
-        Categories, items, and nested modifiers.
-      </p>
+      <div className="page-heading"><div><div className="section-title mb-2.5">Catalogue</div><h1 className="page-title">Menu</h1><p className="page-subtitle">Build categories, items, prices and customer choices from one organised menu workspace.</p></div></div>
       <MenuManager categories={categoriesView} stations={STATIONS} />
     </div>
   );

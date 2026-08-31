@@ -1,18 +1,9 @@
 import { db, orders, orderItems, companies, eq, asc } from "@swift-till/db";
 import { formatPaisa } from "@/lib/money";
 import { publicAssetIfExists } from "@/lib/brand-server";
-import type { Station } from "@/lib/types";
+import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
-
-const STATION_LABEL: Record<Station, string> = {
-  BAR: "BAR",
-  GRILL: "GRILL",
-  FRY: "FRY",
-  MAIN: "MAIN",
-  DESSERT: "DESSERT",
-  EXPO: "EXPO",
-};
 
 export default async function PrintOrder({
   params,
@@ -42,24 +33,9 @@ export default async function PrintOrder({
   const logoPath =
     company?.logoUrl ?? publicAssetIfExists("/assets/logo.svg");
 
-  // Group by station for routed kitchen tickets.
-  const byStation = new Map<Station, typeof order.items>();
-  for (const it of order.items) {
-    const key = it.station as Station;
-    if (!byStation.has(key)) byStation.set(key, []);
-    byStation.get(key)!.push(it);
-  }
-
   return (
     <div style={{ fontFamily: "monospace", color: "#000", background: "#fff", padding: 24, maxWidth: 420, margin: "0 auto" }}>
-      <style>{`@media print { body { margin: 0 } .noprint { display: none } }`}</style>
-      <button
-        className="noprint"
-        onClick={() => window.print()}
-        style={{ marginBottom: 16, padding: "8px 16px", cursor: "pointer" }}
-      >
-        Print this ticket
-      </button>
+      <style>{`@media print { body { margin: 0 } }`}</style>
 
       <h1 style={{ textAlign: "center", fontSize: 20, margin: 0 }}>
         {company?.name ?? "SwiftTill"}
@@ -119,38 +95,7 @@ export default async function PrintOrder({
       <div style={{ fontSize: 12, marginTop: 4 }}>
         {order.payments.map((p) => `${p.tender}: ${formatPaisa(p.amount, company?.currency ?? "PKR")}`).join("  ·  ")}
       </div>
-
-      {/* Routed kitchen tickets (one per station) */}
-      <hr />
-      <h2 style={{ fontSize: 14 }}>KITCHEN TICKETS (ROUTED)</h2>
-      {Array.from(byStation.entries()).map(([station, items]) => (
-        <div key={station} style={{ border: "1px dashed #000", padding: 8, marginBottom: 8 }}>
-          <div style={{ fontWeight: "bold", textAlign: "center" }}>
-            *** {STATION_LABEL[station]} ***
-          </div>
-          <div style={{ fontSize: 11 }}>
-            {order.type}
-            {order.table ? ` T${order.table.number}` : ""} ·{" "}
-            {new Date(order.createdAt).toLocaleTimeString()}
-          </div>
-          {items.map((it, i) => (
-            <div key={i} style={{ fontSize: 13 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>
-                  {it.quantity}× {it.name}
-                  {it.seat ? ` (S${it.seat})` : ""}
-                </span>
-              </div>
-              {it.modifiers.length ? (
-                <div style={{ fontSize: 11, paddingLeft: 12 }}>
-                  + {it.modifiers.map((m) => m.name).join(", ")}
-                </div>
-              ) : null}
-              {it.notes ? <div style={{ fontSize: 11, paddingLeft: 12 }}>“{it.notes}”</div> : null}
-            </div>
-          ))}
-        </div>
-      ))}
+      <PrintButton />
     </div>
   );
 }

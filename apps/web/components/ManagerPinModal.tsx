@@ -5,7 +5,7 @@ import { useState } from "react";
 interface Props {
   title?: string;
   confirmLabel?: string;
-  onSuccess: () => void;
+  onSuccess: (pin: string) => void;
   onClose: () => void;
 }
 
@@ -40,7 +40,7 @@ export default function ManagerPinModal({
         setBusy(false);
         return;
       }
-      onSuccess();
+      onSuccess(pin);
     } catch {
       setError("Network error");
       setBusy(false);

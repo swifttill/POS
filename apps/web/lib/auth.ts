@@ -109,6 +109,19 @@ export async function requirePermission(
   return user;
 }
 
+// Distinguish "not logged in" (401) from "logged in but not allowed" (403).
+export type AuthResult =
+  | { user: SessionUser; status: 200 }
+  | { user: null; status: 401 }
+  | { user: null; status: 403 };
+
+export async function authorize(perm: Permission): Promise<AuthResult> {
+  const user = await getSession();
+  if (!user) return { user: null, status: 401 };
+  if (!user.permissions[perm]) return { user: null, status: 403 };
+  return { user, status: 200 };
+}
+
 // Verify a PIN against a specific user's stored hash (used for
 // re-entry confirmation on sensitive actions like void/refund).
 export async function verifyPinForUser(

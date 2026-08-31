@@ -105,15 +105,8 @@ export default function ReportsPage() {
 
   return (
     <div className="reports-shell">
-      <div className="flex items-center justify-between flex-wrap gap-3 no-print">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--color-brand)" }}>
-            {title}
-          </h1>
-          <p className="text-muted text-sm">
-            Cross-filter by date, tender, and category. Print or export any report.
-          </p>
-        </div>
+      <div className="page-heading no-print">
+        <div><div className="section-title mb-2.5">Analytics</div><h1 className="page-title">{title}</h1><p className="page-subtitle">Real sales data with date, payment and category filters. Print or export the current view.</p></div>
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="btn-secondary px-4 py-2 text-sm">
             Print / PDF
@@ -124,7 +117,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="card p-4 grid gap-3 sm:grid-cols-5 mb-6 no-print">
+      <div className="card p-4 md:p-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-6 no-print">
         <label className="text-sm">
           <span className="text-muted">From</span>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls + " w-full mt-1"} />
@@ -163,7 +156,7 @@ export default function ReportsPage() {
 
       <div className="print-area">
         <div className="mb-4">
-          <div className="text-xl font-bold" style={{ color: "var(--color-brand)" }}>{title}</div>
+          <div className="text-xl font-extrabold text-ink">{title}</div>
           <div className="text-sm text-muted">
             {companyName ? `${companyName} · ` : ""}
             {from || to ? `${from || "…"} → ${to || "…"}` : "All dates"}
@@ -247,7 +240,7 @@ export default function ReportsPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="card p-4">
-      <div className="text-2xl font-bold" style={{ color: "var(--color-brand)" }}>{value}</div>
+      <div className="text-2xl font-extrabold text-ink tracking-tight">{value}</div>
       <div className="text-xs text-muted mt-1">{label}</div>
     </div>
   );

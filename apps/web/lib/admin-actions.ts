@@ -16,8 +16,55 @@ import {
 } from "@swift-till/db";
 import { paisaFromRupees } from "@/lib/money";
 import { deleteImage } from "@/lib/cloudinary";
+import { deleteR2Media, isR2MediaUrl } from "@/lib/r2-media";
 import { requirePermission } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
+
+// Media lifecycle helpers.
+//
+// Every media URL we store for categories/items can be:
+//   - an R2 object (`/media/...`) uploaded via the back office, or
+//   - an external/Cloudinary URL.
+// We remove an image from active storage only when (a) a safe DB change has
+// already succeeded and (b) no OTHER category/item still references the same
+// URL (so we never delete shared, still-in-use media). Historical sales/order
+// records are never touched here — order items snapshot name/price and their
+// `menuItemId` FK is `SET NULL`, so deleting a menu row never removes history.
+
+async function countMediaRefs(
+  url: string,
+  opts?: { excludeItemId?: string; excludeCategoryId?: string }
+): Promise<number> {
+  const itemRows = await db
+    .select({ id: menuItems.id })
+    .from(menuItems)
+    .where(eq(menuItems.imageUrl, url));
+  const catRows = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.imageUrl, url));
+  let n = itemRows.length + catRows.length;
+  if (opts?.excludeItemId)
+    n -= itemRows.filter((r) => r.id === opts.excludeItemId).length;
+  if (opts?.excludeCategoryId)
+    n -= catRows.filter((r) => r.id === opts.excludeCategoryId).length;
+  return n;
+}
+
+async function cleanupMedia(
+  url: string | null | undefined,
+  opts?: { excludeItemId?: string; excludeCategoryId?: string }
+): Promise<void> {
+  if (!url) return;
+  // Never delete a file that is still referenced by another item/category.
+  const refs = await countMediaRefs(url, opts);
+  if (refs > 0) return;
+  if (isR2MediaUrl(url)) {
+    await deleteR2Media(url);
+  } else {
+    await deleteImage(url);
+  }
+}
 
 async function guard(perm: Permission): Promise<void> {
   const user = await requirePermission(perm);
@@ -88,15 +135,27 @@ export async function deleteCategory(id: string) {
   await guard("manageMenu");
   const category = await db.query.categories.findFirst({
     where: eq(categories.id, id),
-    with: { items: { columns: { imageUrl: true } } },
+    with: { items: { columns: { id: true, imageUrl: true } } },
   });
-  if (category) {
-    if (category.imageUrl) await deleteImage(category.imageUrl);
-    for (const it of category.items) {
-      if (it.imageUrl) await deleteImage(it.imageUrl);
+  // Remove the DB records first. If deletion fails (e.g. an FK guard rejects
+  // it) we abort BEFORE touching any media, so active files are never removed
+  // for an entity that still exists.
+  await db.delete(categories).where(eq(categories.id, id));
+  if (!category) {
+    revalidatePath("/admin");
+    revalidatePath("/admin/menu");
+    return;
+  }
+  // Business history is untouched: order items keep snapshots and a `SET NULL`
+  // FK, so deleting category/menu rows never removes past orders/reports.
+  if (category.imageUrl) {
+    await cleanupMedia(category.imageUrl, { excludeCategoryId: id });
+  }
+  for (const it of category.items) {
+    if (it.imageUrl) {
+      await cleanupMedia(it.imageUrl, { excludeItemId: it.id });
     }
   }
-  await db.delete(categories).where(eq(categories.id, id));
   revalidatePath("/admin");
   revalidatePath("/admin/menu");
 }
@@ -106,12 +165,23 @@ export async function updateCategory(
   data: { name?: string; imageUrl?: string | null; sortOrder?: number }
 ) {
   await guard("manageMenu");
+  const prev = await db.query.categories.findFirst({
+    where: eq(categories.id, id),
+    columns: { imageUrl: true },
+  });
   const set: Record<string, any> = {};
   if (data.name !== undefined) set.name = data.name;
   if (data.imageUrl !== undefined) set.imageUrl = data.imageUrl;
   if (data.sortOrder !== undefined) set.sortOrder = data.sortOrder;
   if (Object.keys(set).length) {
     await db.update(categories).set(set).where(eq(categories.id, id));
+  }
+  // Replace: old image is no longer referenced by this category and (if not
+  // shared) should be removed from active storage.
+  const prevUrl = prev?.imageUrl ?? null;
+  const nextUrl = data.imageUrl !== undefined ? data.imageUrl : prevUrl;
+  if (prevUrl && prevUrl !== nextUrl) {
+    await cleanupMedia(prevUrl, { excludeCategoryId: id });
   }
   revalidatePath("/admin/menu");
 }
@@ -152,6 +222,10 @@ export async function updateItem(
   }
 ) {
   await guard("manageMenu");
+  const prev = await db.query.menuItems.findFirst({
+    where: eq(menuItems.id, id),
+    columns: { imageUrl: true },
+  });
   const data: any = { ...input };
   if (input.priceRupees !== undefined)
     data.price = paisaFromRupees(input.priceRupees);
@@ -159,6 +233,13 @@ export async function updateItem(
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
   delete data.priceRupees;
   await db.update(menuItems).set(data).where(eq(menuItems.id, id));
+  // Replace: the old image is no longer referenced by this item; remove it from
+  // active storage once the DB update succeeded, unless it is still shared.
+  const prevUrl = prev?.imageUrl ?? null;
+  const nextUrl = input.imageUrl !== undefined ? input.imageUrl : prevUrl;
+  if (prevUrl && prevUrl !== nextUrl) {
+    await cleanupMedia(prevUrl, { excludeItemId: id });
+  }
   revalidatePath("/admin/menu");
 }
 
@@ -190,9 +271,17 @@ export async function moveItem(id: string, direction: "up" | "down") {
 
 export async function deleteItem(id: string) {
   await guard("manageMenu");
-  const item = await db.query.menuItems.findFirst({ where: eq(menuItems.id, id) });
-  if (item?.imageUrl) await deleteImage(item.imageUrl);
+  const item = await db.query.menuItems.findFirst({
+    where: eq(menuItems.id, id),
+    columns: { imageUrl: true },
+  });
+  // Remove the DB record first so active media is never deleted for an entity
+  // that still exists. Order history is preserved independently (order items
+  // snapshot name/price and reference menu items with a SET NULL FK).
   await db.delete(menuItems).where(eq(menuItems.id, id));
+  if (item?.imageUrl) {
+    await cleanupMedia(item.imageUrl, { excludeItemId: id });
+  }
   revalidatePath("/admin/menu");
 }
 

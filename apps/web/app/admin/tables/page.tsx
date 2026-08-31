@@ -81,8 +81,9 @@ export default function AdminTablesPage() {
 
   async function saveEdit(id: string) {
     setBusy(true);
+    setError(null);
     try {
-      await fetch(`/api/tables/${id}`, {
+      const res = await fetch(`/api/tables/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,8 +93,15 @@ export default function AdminTablesPage() {
           zone: edit.zone || "Floor",
         }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Could not update table (${res.status})`);
+        return;
+      }
       setEditingId(null);
       await load();
+    } catch {
+      setError("Network error");
     } finally {
       setBusy(false);
     }
@@ -101,8 +109,18 @@ export default function AdminTablesPage() {
 
   async function remove(id: string) {
     if (!confirm("Delete this table?")) return;
-    await fetch(`/api/tables/${id}`, { method: "DELETE" });
-    await load();
+    setError(null);
+    try {
+      const res = await fetch(`/api/tables/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Could not delete table (${res.status})`);
+        return;
+      }
+      await load();
+    } catch {
+      setError("Network error");
+    }
   }
 
   return (

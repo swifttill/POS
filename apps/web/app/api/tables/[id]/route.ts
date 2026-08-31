@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, restaurantTables, eq } from "@swift-till/db";
-import { requireManager } from "@/lib/auth";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +9,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const manager = await requireManager();
-    if (!manager) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authorize("manageMenu");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to manage tables" },
+        { status: 403 }
+      );
     }
     const { id } = await params;
     const body = (await request.json()) as {
@@ -53,9 +59,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const manager = await requireManager();
-    if (!manager) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authorize("manageMenu");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to manage tables" },
+        { status: 403 }
+      );
     }
     const { id } = await params;
     await db.delete(restaurantTables).where(eq(restaurantTables.id, id));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, restaurantTables, eq, asc } from "@swift-till/db";
-import { requireManager } from "@/lib/auth";
+import { authorize } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +27,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const manager = await requireManager();
-    if (!manager) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await authorize("manageMenu");
+    if (auth.status === 401) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Permission required to manage tables" },
+        { status: 403 }
+      );
     }
     const body = (await request.json()) as {
       number: number;
