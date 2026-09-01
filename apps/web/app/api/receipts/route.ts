@@ -1,0 +1,2 @@
+import { requirePermission } from "../../../lib/auth";import { db } from "../../../lib/db";import { apiError } from "../../../lib/api-error";import { json } from "../../../lib/json";
+export async function GET(req:Request){try{await requirePermission("orders.view");const u=new URL(req.url),orderId=u.searchParams.get("orderId");const receipts=await db.receiptDocument.findMany({where:orderId?{orderId}:undefined,orderBy:{issuedAt:"desc"},take:100,include:{printJobs:true}});return json({ok:true,receipts})}catch(e){return apiError(e)}}

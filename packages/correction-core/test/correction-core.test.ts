@@ -1,0 +1,11 @@
+import assert from "node:assert/strict"; import test from "node:test";
+import { assertItemVoidAllowed, assertOrderVoidAllowed, assertPaymentCorrectionAllowed, assertRefundAmount, calculateItemRefund, deriveRefundedState, remainingRefundableAmount, splitAmountByUnits } from "../src/index.ts";
+test("remaining refundable subtracts refunds and reversals",()=>assert.equal(remainingRefundableAmount({paid:10000,refunded:2500,reversed:1000}),6500));
+test("refund cannot exceed remaining refundable",()=>assert.throws(()=>assertRefundAmount(5000,5001),/exceeds remaining/));
+test("line allocation preserves every minor unit",()=>assert.deepEqual(splitAmountByUnits(100,3),[34,33,33]));
+test("partial quantity refund uses historical line allocations",()=>{const r=calculateItemRefund({soldQuantity:3,alreadyRefundedQuantity:1,requestedQuantity:1,lineGross:3000,lineDiscount:100,lineTax:435,lineTotal:3335});assert.deepEqual(r,{quantity:1,gross:1000,discount:33,tax:145,total:1112});});
+test("same units cannot be refunded twice",()=>assert.throws(()=>calculateItemRefund({soldQuantity:2,alreadyRefundedQuantity:2,requestedQuantity:1,lineGross:2000,lineDiscount:0,lineTax:0,lineTotal:2000}),/remaining refundable quantity/));
+test("paid order cannot be operationally voided",()=>assert.throws(()=>assertOrderVoidAllowed({operationalStatus:"OPEN",financialStatus:"PAID"}),/require payment correction or refund/));
+test("item void enforces remaining quantity",()=>assert.throws(()=>assertItemVoidAllowed({operationalStatus:"OPEN",financialStatus:"UNPAID",soldQuantity:2,alreadyVoidedQuantity:1,requestedQuantity:2}),/void quantity exceeds/));
+test("tender correction rejects already reversed payment",()=>assert.throws(()=>assertPaymentCorrectionAllowed({paymentAmount:1000,alreadyReversed:1000,alreadyRefunded:0,newTender:"CARD"}),/already reversed/));
+test("refunded state is derived without mutating original payment",()=>{assert.equal(deriveRefundedState(10000,4000),"PARTIALLY_REFUNDED");assert.equal(deriveRefundedState(10000,10000),"FULLY_REFUNDED");});

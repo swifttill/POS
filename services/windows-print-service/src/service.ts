@@ -1,0 +1,11 @@
+/** Windows-only local service reference implementation. Bind to 127.0.0.1 only.
+ * Production packaging should run this as the logged-in POS workstation service/agent.
+ * The web app sends immutable print document text + job id; this process performs hardware I/O only.
+ */
+import {createServer} from "node:http"; import {spawn} from "node:child_process"; import {mkdtemp,writeFile,rm} from "node:fs/promises"; import {tmpdir} from "node:os"; import {join} from "node:path";
+import {assertLocalServiceRequest,dispatchPrint,type RawUsbTransport,type PrintRequest} from "../../../packages/print-core/src/index.ts";
+const PORT=Number(process.env.SWIFTTILL_PRINT_PORT??4317), TOKEN=process.env.SWIFTTILL_PRINT_TOKEN??"";
+class WindowsRawTransport implements RawUsbTransport { async sendRaw(name:string,payload:Uint8Array){const dir=await mkdtemp(join(tmpdir(),"swifttill-print-"));const file=join(dir,"job.bin");try{await writeFile(file,payload);await new Promise<void>((ok,fail)=>{const p=spawn("powershell.exe",["-NoProfile","-ExecutionPolicy","Bypass","-File",join(import.meta.dirname,"windows-raw-printer.ps1"),"-PrinterName",name,"-FilePath",file],{windowsHide:true});let err="";p.stderr.on("data",d=>err+=d);p.on("error",fail);p.on("exit",c=>c===0?ok():fail(new Error(err||`PRINT_EXIT_${c}`)));});}finally{await rm(dir,{recursive:true,force:true})}} }
+const transport=new WindowsRawTransport();
+const server=createServer(async(req,res)=>{try{assertLocalServiceRequest(req.headers.host??"",req.headers["x-swifttill-print-token"] as string|undefined,TOKEN);if(req.method==="GET"&&req.url==="/health"){res.setHeader("content-type","application/json");return res.end(JSON.stringify({service:"SwiftTill Print Service",status:"READY",transport:"WINDOWS_USB_RAW"}));}if(req.method!=="POST"||req.url!=="/v1/print"){res.statusCode=404;return res.end("Not Found")}let body="";for await(const c of req)body+=c;const result=await dispatchPrint(JSON.parse(body) as PrintRequest,transport,3);res.statusCode=result.sent?200:503;res.setHeader("content-type","application/json");res.end(JSON.stringify(result));}catch(e){res.statusCode=403;res.end(JSON.stringify({error:e instanceof Error?e.message:"PRINT_SERVICE_ERROR"}))}});
+server.listen(PORT,"127.0.0.1",()=>console.log(`SwiftTill Print Service listening on 127.0.0.1:${PORT}`));

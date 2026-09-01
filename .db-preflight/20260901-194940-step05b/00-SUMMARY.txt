@@ -1,0 +1,23 @@
+﻿SwiftTill rc.5 Database Preflight 05B
+Generated: 2026-09-01 19:50:06
+Project: C:\Users\MALIK HANNAN\Documents\Default Project
+
+SAFETY:
+- READ-ONLY only.
+- No migrate deploy.
+- No migrate dev.
+- No db push.
+- No migrate reset.
+- No seed.
+- prisma/schema.prisma was not overwritten.
+
+RESULT:
+- Prisma validate exit code: 0
+- Prisma migrate status exit code: 1
+- Prisma db pull --print exit code: 0
+- Models detected in temporary introspection output: 15
+- Enums detected in temporary introspection output: 0
+
+NEXT:
+Send the complete PowerShell output to ChatGPT.
+Do NOT run database write/migration commands yet.

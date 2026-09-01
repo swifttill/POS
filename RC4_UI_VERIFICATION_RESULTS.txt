@@ -1,0 +1,29 @@
+SwiftTill v1.0.0-rc.4 UI Polish Verification
+
+Parent ZIP: SwiftTill-v1.0.0-rc.3-Custom-Role-Access-CERTIFIED.zip
+Parent SHA-256: 17331df84d477e579126df29ae20e4368411970269754bbe181bdd18f8faaf9f
+
+Existing automated regression suite: PASS (153/153 inherited rc.3 tests)
+UI source-contract checks: PASS (15/15)
+Phase 12 accessibility source verification: PASS
+Custom access verification: PASS
+Enterprise reporting verification: PASS
+
+UI issues corrected:
+- unified responsive admin navigation shell
+- previously undefined operational/admin CSS classes
+- report filter flex/grid mismatch
+- disabled PAY anchor visual/interaction state
+- tablet POS clipping caused by wrapped topbar + fixed workspace height
+- mobile sticky category rail overlap
+- F2 dirty-order confirmation
+- F9 guarded checkout shortcut
+- keyboard shortcuts ignored while typing
+- semantic/touch-friendly Pax control
+- stale sample-data root screen removed; root routes to login
+- menu moved into shared admin shell without demo products
+- permission touch/focus polish
+- destructive confirmation styling
+
+Next.js production build: NOT CERTIFIED in this environment because installed Next.js dependencies are absent (`next: not found`).
+Browser-rendered visual regression: NOT CERTIFIED for the same runtime dependency limitation.

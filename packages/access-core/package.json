@@ -1,0 +1,10 @@
+{
+  "name": "@swifttill/access-core",
+  "version": "1.0.0-rc.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

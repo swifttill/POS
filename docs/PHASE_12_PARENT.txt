@@ -1,0 +1,3 @@
+Parent artifact: SwiftTill-Phase-11-Windows-USB-Print-Service-CERTIFIED.zip
+Parent SHA-256: f2b12f98c3981415cfe0ba8fe8d761d5d4b9b861f16e74b92a4d5b9f8824a19c
+Phase 12 was created only after verifying this exact parent digest.

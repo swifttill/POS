@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id         String   @id @default(cuid())
+  name       String   @default("SwiftTill Restaurant")
+  address    String?
+  logoUrl    String?
+  tagline    String?
+  currency   String   @default("PKR")
+  gstEnabled Boolean  @default(false)
+  gstRate    Float    @default(0)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamp(6)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  role         String    @default("WAITER")
+  pinHash      String
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  permissions  Json?
+  email        String?
+  passwordHash String?
+  phone        String?
+  username     String?
+  sessions     Session[]
+}
+
+model Order {
+  id              String           @id @default(cuid())
+  type            String
+  status          String           @default("OPEN")
+  tableId         String?
+  pax             Int?
+  waiterName      String?
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?
+  subtotal        Int              @default(0)
+  tax             Int              @default(0)
+  total           Int              @default(0)
+  discountPaisa   Int              @default(0)
+  discountReason  String?
+  discountBy      String?
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  billedAt        DateTime?        @db.Timestamp(6)
+  closedAt        DateTime?        @db.Timestamp(6)
+  kotPrinted      Boolean          @default(false)
+  billPrinted     Boolean          @default(false)
+  billQueuedAt    DateTime?        @db.Timestamp(6)
+  shiftId         String?
+  number          Int
+  Shift           Shift?           @relation(fields: [shiftId], references: [id], onUpdate: NoAction, map: "Order_shiftId_Shift_id_fk")
+  RestaurantTable RestaurantTable? @relation(fields: [tableId], references: [id], onUpdate: NoAction, map: "Order_tableId_RestaurantTable_id_fk")
+  items           OrderItem[]
+  Payment         Payment[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([type])
+}
+
+model RestaurantTable {
+  id     String  @id @default(cuid())
+  number Int     @unique(map: "RestaurantTable_number_unique")
+  name   String?
+  seats  Int     @default(2)
+  zone   String?
+  posX   Int     @default(0)
+  posY   Int     @default(0)
+  Order  Order[]
+}
+
+model OrderItem {
+  id         String              @id @default(cuid())
+  orderId    String
+  menuItemId String?
+  name       String
+  unitPrice  Int
+  quantity   Int                 @default(1)
+  seat       Int?
+  course     Int                 @default(1)
+  notes      String?
+  station    String              @default("MAIN")
+  MenuItem   MenuItem?           @relation(fields: [menuItemId], references: [id], onUpdate: NoAction, map: "OrderItem_menuItemId_MenuItem_id_fk")
+  order      Order               @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "OrderItem_orderId_Order_id_fk")
+  modifiers  OrderItemModifier[]
+
+  @@index([orderId], map: "OrderItem_order_idx")
+}
+
+model OrderItemModifier {
+  id          String    @id @default(cuid())
+  orderItemId String
+  name        String
+  priceDelta  Int       @default(0)
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "OrderItemModifier_orderItemId_OrderItem_id_fk")
+
+  @@index([orderItemId], map: "OrderItemModifier_item_idx")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique(map: "Session_token_unique")
+  userId    String
+  expiresAt DateTime @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Session_userId_User_id_fk")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique(map: "Category_slug_unique")
+  sortOrder Int        @default(0)
+  imageUrl  String?
+  parentId  String?
+  items     MenuItem[]
+}
+
+model MenuItem {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  price          Int
+  imageUrl       String?
+  available      Boolean         @default(true)
+  sortOrder      Int             @default(0)
+  printerStation String          @default("MAIN")
+  categoryId     String
+  DealItem       DealItem[]
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "MenuItem_categoryId_Category_id_fk")
+  ModifierGroup  ModifierGroup[]
+  OrderItem      OrderItem[]
+
+  @@index([categoryId], map: "MenuItem_category_idx")
+}
+
+model ModifierGroup {
+  id         String     @id @default(cuid())
+  name       String
+  minSelect  Int        @default(0)
+  maxSelect  Int        @default(1)
+  required   Boolean    @default(false)
+  sortOrder  Int        @default(0)
+  menuItemId String
+  Modifier   Modifier[]
+  MenuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ModifierGroup_menuItemId_MenuItem_id_fk")
+
+  @@index([menuItemId], map: "ModifierGroup_item_idx")
+}
+
+model Deal {
+  id       String     @id @default(cuid())
+  name     String
+  type     String
+  value    Int        @default(0)
+  active   Boolean    @default(true)
+  startsAt DateTime?  @db.Timestamp(6)
+  endsAt   DateTime?  @db.Timestamp(6)
+  DealItem DealItem[]
+}
+
+model Shift {
+  id        String    @id @default(cuid())
+  name      String
+  openedAt  DateTime  @default(now()) @db.Timestamp(6)
+  closedAt  DateTime? @db.Timestamp(6)
+  openedBy  String?
+  cashStart Int       @default(0)
+  cashEnd   Int?
+  Order     Order[]
+}
+
+model DealItem {
+  id         String   @id
+  dealId     String
+  menuItemId String
+  quantity   Int      @default(1)
+  Deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "DealItem_dealId_Deal_id_fk")
+  MenuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "DealItem_menuItemId_MenuItem_id_fk")
+
+  @@index([dealId], map: "DealItem_deal_idx")
+  @@index([menuItemId], map: "DealItem_item_idx")
+}
+
+model Modifier {
+  id              String        @id
+  name            String
+  priceDelta      Int           @default(0)
+  sortOrder       Int           @default(0)
+  modifierGroupId String
+  ModifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Modifier_modifierGroupId_ModifierGroup_id_fk")
+
+  @@index([modifierGroupId], map: "Modifier_group_idx")
+}
+
+model Payment {
+  id        String   @id
+  orderId   String
+  tender    String
+  amount    Int
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  Order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Payment_orderId_Order_id_fk")
+
+  @@index([orderId], map: "Payment_order_idx")
+}
+
+

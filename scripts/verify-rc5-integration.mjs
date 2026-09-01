@@ -1,0 +1,15 @@
+import { readFile,readdir } from "node:fs/promises";import { fileURLToPath } from "node:url";import { join } from "node:path";
+const root=fileURLToPath(new URL("../",import.meta.url));let pass=0;const check=(ok,msg)=>{if(!ok)throw new Error(msg);pass++};const read=p=>readFile(join(root,p),"utf8");
+const ws=await read("pnpm-workspace.yaml");check(ws.includes('apps/*')&&ws.includes('packages/*'),"pnpm workspace missing");
+const web=JSON.parse(await read("apps/web/package.json"));check(!!web.dependencies["@prisma/client"]&&!!web.devDependencies.prisma,"Prisma dependencies missing");
+const m1=await read("prisma/migrations/0001_foundation/migration.sql");check(m1.includes('CREATE TABLE "Company"')&&m1.includes('CREATE TABLE "Order"')&&m1.includes('CREATE SEQUENCE'),"Executable DB foundation missing");
+const vf=await read("scripts/verify-foundation.mjs");check(vf.includes("fileURLToPath"),"Windows verifier path fix missing");
+const routes=[];async function walk(d){for(const e of await readdir(join(root,d),{withFileTypes:true})){const p=join(d,e.name);if(e.isDirectory())await walk(p);else if(e.name==="route.ts")routes.push(p)}}await walk("apps/web/app/api");check(routes.length>=12,`Expected >=12 API routes, got ${routes.length}`);
+const auth=await read("apps/web/lib/auth.ts");check(auth.includes("http")||auth.includes("SESSION_COOKIE"),"Session auth missing");check(auth.includes('o.effect==="DENY"')&&auth.indexOf('o.effect==="DENY"')>auth.indexOf('o.effect==="ALLOW"'),"DENY override must be applied last/highest priority");
+const orders=await read("apps/web/app/api/orders/route.ts");check(orders.includes("priceLines")&&orders.includes("TABLE_OCCUPIED")&&orders.includes("Serializable"),"Order authority/concurrency missing");
+const pay=await read("apps/web/app/api/payments/route.ts");check(pay.includes("idempotencyKey")&&pay.includes("NON_CASH_OVERPAYMENT")&&pay.includes("change"),"Payment integrity missing");
+const login=await read("apps/web/app/login/page.tsx");check(login.includes('/api/auth/login')&&login.includes('/api/auth/staff'),"Login UI not connected");
+const pos=await read("apps/web/app/pos/page.tsx");check(pos.includes('/api/catalog')&&pos.includes('/api/tables')&&pos.includes('/api/orders'),"POS not connected");
+const boot=await read("apps/web/scripts/bootstrap-admin.mjs");check(boot.includes("Bootstrap refused")&&boot.includes("SWIFTTILL_BOOTSTRAP_ADMIN_PIN"),"Secure bootstrap missing");
+const env=await read(".env.example");check(env.includes("DATABASE_URL")&&env.includes("SWIFTTILL_BOOTSTRAP_ADMIN_PIN"),"Environment contract incomplete");
+console.log(`rc.5 integration source verification passed: ${pass}/${pass} checks; ${routes.length} API routes discovered.`);

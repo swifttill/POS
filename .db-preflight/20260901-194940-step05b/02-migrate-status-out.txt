@@ -1,0 +1,23 @@
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-dawn-sun-axxl6lri.c-4.us-east-2.aws.neon.tech"
+
+15 migrations found in prisma/migrations
+Following migrations have not yet been applied:
+0001_foundation
+0002_identity_roles_company
+0003_menu_catalog_modifiers_deals
+0004_pos_tables_orders
+0005_open_orders_management
+0006_discounts_split_bill
+0007_payments_split_tender
+0008_void_refund_corrections
+0009_shifts_cash_drawer
+0010_receipts_print_snapshots
+0011_dashboard_reports_exports
+0012_windows_usb_print_service
+0015_enterprise_reporting_access
+0016_custom_role_access
+0017_runtime_integration
+
+To apply migrations in development run prisma migrate dev.
+To apply migrations in production run prisma migrate deploy.

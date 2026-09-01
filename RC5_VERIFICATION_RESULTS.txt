@@ -1,0 +1,20 @@
+SwiftTill v1.0.0-rc.5 Runtime Integration Repair
+Parent SHA-256: 9ce6340cd1b7dc2978994ad038191cfdd69683bed31bf7691deae8303fb07a1d
+
+PASS: inherited rc.4 automated/domain/source verification suite
+PASS: inherited UI polish verifier (15/15)
+PASS: rc.5 integration source verifier (13/13)
+PASS: 16 Next.js API route source endpoints discovered
+PASS: Windows path portability repair present
+PASS: executable PostgreSQL foundation migration present
+PASS: pnpm-workspace.yaml present
+PASS: Prisma dependencies declared
+PASS: login/POS/orders/tables/payment/receipts connected in source
+
+NOT CERTIFIED IN SANDBOX:
+- Prisma validate/generate (dependency registry install unavailable/timed out here)
+- Live PostgreSQL connection/migration against user's DATABASE_URL
+- Next production build after rc.5 changes (must run on user's Windows machine after pnpm install)
+- Physical USB printer/cash drawer
+
+IMPORTANT: Do not use prisma migrate reset or prisma db push on an existing database.

@@ -1,0 +1,13 @@
+import test from "node:test"; import assert from "node:assert/strict";
+import {CUT,DRAWER_KICK,assertLocalServiceRequest,dispatchPrint,drawerPulse,encodeEscPosText,normalizeWindowsPrinterList,validatePrintRequest,type PrinterTarget} from "../src/index.ts";
+const printer:PrinterTarget={id:"p1",systemName:"EPSON TM-T20III",displayName:"Counter",paperWidth:80,active:true};
+test("ESC/POS receipt initializes and cuts",()=>{const b=encodeEscPosText("SwiftTill");assert.equal(b[0],0x1b);assert.equal(b[1],0x40);assert.deepEqual([...b.slice(-CUT.length)],[...CUT])});
+test("drawer pulse is explicit ESC/POS command",()=>assert.deepEqual([...drawerPulse()],[...DRAWER_KICK]));
+test("drawer command is absent unless requested",()=>{const a=encodeEscPosText("x",{drawer:false});const b=encodeEscPosText("x",{drawer:true});assert.equal(b.length-a.length,DRAWER_KICK.length)});
+test("print request rejects disabled printer",()=>assert.throws(()=>validatePrintRequest({jobId:"j",printer:{...printer,active:false},kind:"RECEIPT",text:"x",copies:1,cut:true}),/PRINTER_DISABLED/));
+test("dispatch retries transport and succeeds without financial mutation",async()=>{let n=0;const r=await dispatchPrint({jobId:"j1",printer,kind:"RECEIPT",text:"paid",copies:1,cut:true},{async sendRaw(){if(++n<2)throw new Error("USB_OFFLINE")}},3);assert.deepEqual(r,{jobId:"j1",sent:true,attempts:2})});
+test("failed dispatch returns failure instead of throwing payment semantics",async()=>{const r=await dispatchPrint({jobId:"j2",printer,kind:"RECEIPT",text:"paid",copies:1,cut:true},{async sendRaw(){throw new Error("USB_OFFLINE")}},2);assert.equal(r.sent,false);assert.equal(r.errorCode,"USB_OFFLINE")});
+test("multiple copies are sent independently",async()=>{let n=0;const r=await dispatchPrint({jobId:"j3",printer,kind:"REPORT",text:"Z",copies:2,cut:true},{async sendRaw(){n++}},1);assert.equal(r.sent,true);assert.equal(n,2)});
+test("local service rejects non-loopback host",()=>assert.throws(()=>assertLocalServiceRequest("192.168.1.4:4317","x","x"),/LOCALHOST_ONLY/));
+test("local service requires exact shared token",()=>{assert.throws(()=>assertLocalServiceRequest("127.0.0.1:4317","bad","good"),/PRINT_SERVICE_UNAUTHORIZED/);assert.doesNotThrow(()=>assertLocalServiceRequest("localhost:4317","good","good"))});
+test("Windows printer discovery normalizes offline state",()=>{const x=normalizeWindowsPrinterList([{Name:"Receipt",PrinterStatus:3},{Name:"Backup",WorkOffline:true}]);assert.equal(x[0].health,"READY");assert.equal(x[1].health,"OFFLINE")});

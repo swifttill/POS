@@ -1,0 +1,4 @@
+SwiftTill Final Release parent milestone
+Parent ZIP: SwiftTill-Phase-13-Security-Production-QA-CERTIFIED.zip
+Parent SHA-256: cc9d530ab1d01c79e9d8f408e178175038451350d621e62c1743912743675652
+Rule: Final release packaging was produced only from this verified Phase 13 certified source tree.

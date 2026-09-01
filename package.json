@@ -1,21 +1,60 @@
 {
-  "name": "swift-till",
-  "version": "0.1.0",
+  "name": "swifttill",
+  "version": "1.0.0-rc.5",
   "private": true,
-  "packageManager": "pnpm@10.33.2",
-  "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "deploy": "pnpm --filter @swift-till/web run deploy",
-    "lint": "turbo run lint",
-    "agent": "pnpm --filter @swift-till/agent start",
-    "agent:typecheck": "pnpm --filter @swift-till/agent typecheck",
-    "db:generate": "pnpm --filter @swift-till/db generate",
-    "db:push": "pnpm --filter @swift-till/db db:push",
-    "db:seed": "pnpm --filter @swift-till/db db:seed"
+  "description": "SwiftTill restaurant POS — UI-polished source release candidate with enterprise reporting and custom role/user access management",
+  "engines": {
+    "node": ">=22"
   },
+  "scripts": {
+    "dev": "npm --workspace @swifttill/web run dev",
+    "build": "npm --workspace @swifttill/web run build",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "test:foundation": "node --experimental-strip-types --test packages/financial-core/test/*.test.ts",
+    "verify:source": "node scripts/verify-foundation.mjs",
+    "verify": "npm run test:foundation && npm run test:phase1 && npm run test:phase2 && npm run test:phase3 && npm run test:phase4 && npm run test:phase5 && npm run test:phase6 && npm run test:phase7 && npm run test:phase8 && npm run test:phase9 && npm run verify:source && npm run verify:phase8 && npm run verify:phase9 && npm run test:phase10 && npm run verify:phase10 && npm run test:phase11 && npm run verify:phase11 && npm run test:phase12 && npm run verify:phase12 && npm run test:phase13 && npm run verify:phase13",
+    "test:phase1": "node --experimental-strip-types --test packages/security-core/test/*.test.ts packages/settings-core/test/*.test.ts",
+    "test:phase2": "node --experimental-strip-types --test packages/menu-core/test/*.test.ts",
+    "test:phase3": "node --experimental-strip-types --test packages/pos-core/test/pos-core.test.ts",
+    "test:phase4": "node --experimental-strip-types --test packages/pos-core/test/order-management.test.ts",
+    "test:phase5": "node --experimental-strip-types --test packages/discount-core/test/*.test.ts packages/pos-core/test/split-billing.test.ts",
+    "test:phase6": "node --experimental-strip-types --test packages/payment-core/test/*.test.ts",
+    "test:phase7": "node --experimental-strip-types --test packages/correction-core/test/*.test.ts",
+    "test:phase8": "node --experimental-strip-types --test packages/shift-core/test/*.test.ts",
+    "verify:phase8": "node scripts/verify-phase08.mjs",
+    "test:phase9": "node --experimental-strip-types --test packages/receipt-core/test/*.test.ts",
+    "verify:phase9": "node scripts/verify-phase09.mjs",
+    "test:phase10": "node --experimental-strip-types --test packages/report-core/test/*.test.ts",
+    "verify:phase10": "node scripts/verify-phase10.mjs",
+    "test:phase11": "node --experimental-strip-types --test packages/print-core/test/*.test.ts",
+    "verify:phase11": "node scripts/verify-phase11.mjs",
+    "test:phase12": "node --experimental-strip-types --test packages/ui-core/test/*.test.ts",
+    "verify:phase12": "node scripts/verify-phase12.mjs",
+    "test:phase13": "node --experimental-strip-types --test packages/reliability-core/test/*.test.ts",
+    "verify:phase13": "node scripts/verify-phase13.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "test:enterprise-reporting": "node --experimental-strip-types --test packages/reporting-advanced-core/test/*.test.ts",
+    "verify:enterprise-reporting": "node scripts/verify-enterprise-reporting.mjs",
+    "verify:extended": "npm run verify && npm run test:enterprise-reporting && npm run verify:enterprise-reporting",
+    "test:custom-access": "node --experimental-strip-types --test packages/access-core/test/*.test.ts",
+    "verify:custom-access": "node scripts/verify-custom-access.mjs",
+    "verify:rc3": "npm run verify:extended && npm run test:custom-access && npm run verify:custom-access",
+    "verify:ui-polish": "node scripts/verify-ui-polish.mjs",
+    "verify:rc4": "npm run verify:rc3 && npm run verify:ui-polish",
+    "prisma:generate": "pnpm --filter @swifttill/web exec prisma generate --schema ../../prisma/schema.prisma",
+    "prisma:validate": "pnpm --filter @swifttill/web exec prisma validate --schema ../../prisma/schema.prisma",
+    "prisma:migrate:status": "pnpm --filter @swifttill/web exec prisma migrate status --schema ../../prisma/schema.prisma",
+    "verify:rc5": "npm run verify:rc4 && node scripts/verify-rc5-integration.mjs",
+    "bootstrap:admin": "pnpm --filter @swifttill/web exec node scripts/bootstrap-admin.mjs"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "devDependencies": {
-    "turbo": "^2.3.3",
-    "typescript": "^5.6.3"
+    "prisma": "6.19.3"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3"
   }
 }

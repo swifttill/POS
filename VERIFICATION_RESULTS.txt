@@ -1,0 +1,22 @@
+SwiftTill Final Source Release Candidate — verification results
+Version: 1.0.0-rc.1
+Parent: SwiftTill-Phase-13-Security-Production-QA-CERTIFIED.zip
+Parent SHA-256: cc9d530ab1d01c79e9d8f408e178175038451350d621e62c1743912743675652
+
+PASS: Exact parent archive SHA verified before extraction.
+PASS: Full inherited automated regression suite: 129/129 tests.
+PASS: Phase 13 security/concurrency source contract.
+PASS: Final release package contract.
+PASS: Deployment runbook included.
+PASS: PostgreSQL backup/restore runbook included.
+PASS: Production go-live checklist included with blocking target-environment gates.
+PASS: Clean package excludes .git, node_modules, .next, real .env, logs and nested ZIPs.
+PASS: SHA-256 source manifest regenerated for final tree.
+
+NOT CERTIFIED: Next.js production build. Attempted in sandbox; dependency installation did not complete and `next` is unavailable.
+NOT CERTIFIED: Live PostgreSQL migration/restore rehearsal.
+NOT CERTIFIED: Real multi-terminal PostgreSQL concurrency/load tests.
+NOT CERTIFIED: Physical browser/device/screen-reader matrix.
+NOT CERTIFIED: Physical Windows USB thermal printer/cash drawer.
+
+Status: FINAL SOURCE RELEASE CANDIDATE. Production go-live remains blocked until applicable target-environment checklist items pass.

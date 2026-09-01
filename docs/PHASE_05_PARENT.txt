@@ -1,0 +1,3 @@
+Parent artifact: SwiftTill-Phase-04-Open-Orders-CERTIFIED.zip
+Parent SHA-256: 3c84d81d6de37169aeea3646a371a06541e06cb73b1076012cce960ffa6767e9
+Continuity rule: Phase 05 was extracted from and built directly on this certified artifact.

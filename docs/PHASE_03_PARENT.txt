@@ -1,0 +1,3 @@
+Parent certified artifact: SwiftTill-Phase-02-Menu-Catalogue-CERTIFIED.zip
+SHA-256: 35f582697d53e2dbb43461d6290a904f5ab3245ed80471d9db99056350318fec
+Phase 03 was built by extracting and continuing this exact artifact.

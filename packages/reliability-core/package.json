@@ -1,0 +1,1 @@
+{"name":"@swifttill/reliability-core","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --experimental-strip-types --test test/*.test.ts","typecheck":"tsc -p tsconfig.json --noEmit"}}

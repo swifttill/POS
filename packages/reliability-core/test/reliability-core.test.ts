@@ -1,0 +1,16 @@
+import test from "node:test"; import assert from "node:assert/strict";
+import {assertExpectedVersion,assertIdempotencyKey,assertMoneyMinorUnits,assertOwnedChild,assertReconciled,assertRequestActor,assertTenantOwnership,immutableSnapshot,normalizePage,redactAuditMetadata,requirePermission,safePublicError,withSerializableRetry} from "../src/index.ts";
+const ctx={userId:"u1",companyId:"c1",sessionId:"s1",permissions:["orders.edit"]};
+test("permission guard rejects privilege escalation",()=>{assert.throws(()=>requirePermission(ctx,"refund.create"),/FORBIDDEN/)});
+test("tenant ownership hides cross-company records",()=>{assert.throws(()=>assertTenantOwnership(ctx,{companyId:"c2"}),/NOT_FOUND/)});
+test("child ownership blocks cross-order IDOR",()=>{assert.throws(()=>assertOwnedChild("order-a",{parentId:"order-b"}),/NOT_FOUND/)});
+test("actor is derived from session and cannot be spoofed",()=>{assert.throws(()=>assertRequestActor(ctx,"u2"),/ACTOR_SPOOFING_REJECTED/)});
+test("optimistic version conflicts are rejected",()=>{assert.throws(()=>assertExpectedVersion(4,3),/VERSION_CONFLICT/)});
+test("money must be non-negative safe integer minor units",()=>{assert.throws(()=>assertMoneyMinorUnits(1.2),/INVALID_MONEY_MINOR_UNITS/);assert.throws(()=>assertMoneyMinorUnits(Number.MAX_SAFE_INTEGER+1),/INVALID_MONEY_MINOR_UNITS/)});
+test("idempotency keys require bounded nontrivial values",()=>{assert.equal(assertIdempotencyKey("payment-123"),"payment-123");assert.throws(()=>assertIdempotencyKey("x"),/INVALID_IDEMPOTENCY_KEY/)});
+test("pagination is bounded",()=>{assert.deepEqual(normalizePage({limit:100}),{limit:100,cursor:undefined});assert.throws(()=>normalizePage({limit:1000}),/INVALID_PAGE_LIMIT/)});
+test("reconciliation mismatch is surfaced",()=>{assert.doesNotThrow(()=>assertReconciled({netSales:1000,netLedger:1000}));assert.throws(()=>assertReconciled({netSales:1000,netLedger:999}),/RECONCILIATION_MISMATCH/)});
+test("snapshots are cloned and frozen",()=>{const src={total:100};const snap=immutableSnapshot(src);src.total=200;assert.equal(snap.total,100);assert.equal(Object.isFrozen(snap),true)});
+test("serializable conflicts retry with a hard bound",async()=>{let calls=0;const result=await withSerializableRetry(async()=>{calls++;if(calls<3)throw Object.assign(new Error("conflict"),{code:"40001"});return "ok"},e=>(e as {code:string}).code,3);assert.equal(result,"ok");assert.equal(calls,3)});
+test("audit metadata redacts credentials recursively",()=>{assert.deepEqual(redactAuditMetadata({token:"abc",nested:{password:"p",ok:1}}),{token:"[REDACTED]",nested:{password:"[REDACTED]",ok:1}})});
+test("internal errors do not leak implementation details",()=>{assert.deepEqual(safePublicError(new Error("postgres connection string leaked")),{code:"INTERNAL_ERROR",message:"INTERNAL_ERROR"})});

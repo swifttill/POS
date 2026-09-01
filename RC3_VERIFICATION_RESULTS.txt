@@ -1,0 +1,33 @@
+SwiftTill v1.0.0-rc.3 — Custom Role & User Access Management
+
+Parent package:
+SwiftTill-v1.0.0-rc.2-Enterprise-Reporting-Access-CERTIFIED.zip
+SHA-256: 8aa6e587737cf816acbee8afcf02e3c99945d4797c569c2a64e381bc4369e71b
+
+Verification completed:
+- Existing Phase 00–13 automated regression suite: PASS (129 tests)
+- Enterprise reporting expansion tests: PASS (9 tests)
+- Custom role/user access tests: PASS (15 tests)
+- Total automated tests: PASS (153/153)
+- Enterprise reporting source verification: PASS (12 checks)
+- Custom access source verification: PASS (13 checks)
+- access-core strict TypeScript source check: PASS
+- Parent continuity SHA check: PASS
+
+Custom access rules verified:
+- Active role grants are additive.
+- User ALLOW overrides can add access.
+- User DENY overrides take precedence over ALLOW and role grants.
+- Inactive roles grant nothing.
+- Unknown permission keys are rejected.
+- Actor cannot grant privileges they do not possess.
+- Last active administrator protection is enforced.
+- Role cloning preserves permission set.
+- Access mutations produce immutable audit payloads.
+- User role assignment is transaction-oriented.
+- User overrides are transaction-oriented.
+
+Production build attempt:
+NOT CERTIFIED — `next build` cannot execute because the isolated environment does not contain the Next.js dependency (`next: not found`). This is recorded as a limitation, not a pass.
+
+Live PostgreSQL migration rehearsal and browser/runtime testing remain deployment-environment gates.

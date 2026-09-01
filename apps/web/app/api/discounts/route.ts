@@ -1,0 +1,20 @@
+import { Prisma } from "@prisma/client";
+import { requirePermission } from "../../../lib/auth";
+import { db } from "../../../lib/db";
+import { apiError } from "../../../lib/api-error";
+import { json,safe } from "../../../lib/json";
+
+function allocate(total: bigint, lines: {id:string;lineGross:bigint}[]) {
+  const gross=lines.reduce((s,l)=>s+l.lineGross,0n);
+  if(total<0n||total>gross) throw Object.assign(new Error("INVALID_DISCOUNT"),{status:422});
+  if(gross===0n) return lines.map(l=>({id:l.id,amount:0n}));
+  const rows=lines.map(l=>{const n=total*l.lineGross;return{id:l.id,amount:n/gross,rem:n%gross}});
+  let left=total-rows.reduce((s,r)=>s+r.amount,0n);
+  rows.sort((a,b)=>a.rem===b.rem?a.id.localeCompare(b.id):a.rem>b.rem?-1:1);
+  for(let i=0;left>0n;i=(i+1)%rows.length){rows[i].amount++;left--}
+  return rows.map(r=>({id:r.id,amount:r.amount}));
+}
+
+export async function GET(req:Request){try{await requirePermission("discounts.view");const u=new URL(req.url);const orderId=u.searchParams.get("orderId");const [rules,applied]=await Promise.all([db.discountRule.findMany({where:{active:true},orderBy:{name:"asc"}}),orderId?db.appliedDiscount.findMany({where:{orderId,active:true},include:{allocations:true},orderBy:{createdAt:"asc"}}):Promise.resolve([])]);return json({ok:true,rules:safe(rules),applied:safe(applied)})}catch(e){return apiError(e)}}
+
+export async function POST(req:Request){try{const session=await requirePermission("discounts.apply_custom");const b=await req.json() as {orderId:string;type:"PERCENT"|"FIXED";value:string|number;reason:string;idempotencyKey?:string};if(!b.orderId||!b.reason?.trim()||!["PERCENT","FIXED"].includes(b.type))throw Object.assign(new Error("INVALID_DISCOUNT"),{status:422});const v=Number(b.value);if(!Number.isSafeInteger(v)||v<=0)throw Object.assign(new Error("INVALID_DISCOUNT_VALUE"),{status:422});const result=await db.$transaction(async tx=>{const o=await tx.order.findUnique({where:{id:b.orderId},include:{items:true,payments:true,discounts:{where:{active:true}}}});if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});if(o.operationalStatus!=="OPEN")throw Object.assign(new Error("ORDER_NOT_OPEN"),{status:409});if(o.payments.some(p=>p.type==="PAYMENT"))throw Object.assign(new Error("DISCOUNT_AFTER_PAYMENT_NOT_ALLOWED"),{status:409});if(o.discounts.length)throw Object.assign(new Error("DISCOUNT_ALREADY_APPLIED"),{status:409});let amount=b.type==="PERCENT"?(o.grossSubtotal*BigInt(v)+5000n)/10000n:BigInt(v);if(amount>o.grossSubtotal)amount=o.grossSubtotal;const alloc=allocate(amount,o.items.map(i=>({id:i.id,lineGross:i.lineGross})));const company=await tx.company.findFirstOrThrow();let assignedTax=0n;const taxable=o.grossSubtotal-amount;const tax=company.taxEnabled?(taxable*BigInt(company.taxRateBps)+5000n)/10000n:0n;for(let i=0;i<o.items.length;i++){const item=o.items[i],d=alloc.find(x=>x.id===item.id)?.amount??0n;const lineTax=i===o.items.length-1?tax-assignedTax:(tax*(item.lineGross-d))/(taxable||1n);assignedTax+=lineTax;await tx.orderItem.update({where:{id:item.id},data:{lineDiscount:d,lineTax,lineTotal:item.lineGross-d+lineTax}})}const ad=await tx.appliedDiscount.create({data:{orderId:o.id,nameSnapshot:"Custom discount",type:b.type,scope:"ORDER",source:"CUSTOM",valueSnapshot:v,amount,reason:b.reason.trim().slice(0,500),appliedByUserId:session.userId,allocations:{create:alloc.map(a=>({orderItemId:a.id,amount:a.amount}))}}});const updated=await tx.order.update({where:{id:o.id},data:{discountTotal:amount,taxableSubtotal:taxable,taxTotal:tax,total:taxable+tax,version:{increment:1}}});await tx.auditEvent.create({data:{action:"DISCOUNT_APPLIED",entityType:"Order",entityId:o.id,actorUserId:session.userId,reason:b.reason.trim().slice(0,500),metadata:{discountId:ad.id,amount:String(amount),type:b.type,value:v}}});return updated},{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});return json({ok:true,order:safe(result)},{status:201})}catch(e){return apiError(e)}}

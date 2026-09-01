@@ -1,0 +1,4 @@
+Phase 07 parent artifact:
+SwiftTill-Phase-06-Payments-Split-Tender-CERTIFIED.zip
+SHA-256: bb1ef67adfab98ee7d6fbd26820f6e11cfc5bbe8a58f660d3fb775e17f1a3419
+Continuity rule: Phase 07 was created by extracting this exact certified archive and modifying the extracted source in place.

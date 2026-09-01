@@ -1,29 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
-import LoginForm from "./LoginForm";
-
-export const dynamic = "force-dynamic";
-
-export default async function LoginPage() {
-  const user = await getSession();
-  if (user) redirect("/");
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-7 shadow-sm">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="h-10 w-10 rounded-xl bg-brand flex items-center justify-center text-white font-bold">
-            ST
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-ink leading-none">SwiftTill</h1>
-            <p className="text-xs text-muted mt-1">Restaurant Point of Sale</p>
-          </div>
-        </div>
-        <p className="text-sm text-muted mb-5 mt-3">Sign in with your PIN to continue.</p>
-        <LoginForm />
-      </div>
-    </main>
-  );
-}
-
-export const runtime = "nodejs";
+"use client";
+import { FormEvent,useEffect,useState } from "react"; import { useRouter } from "next/navigation";
+type Staff={id:string;name:string};
+export default function LoginPage(){const router=useRouter(),[staff,setStaff]=useState<Staff[]>([]),[userId,setUserId]=useState(""),[pin,setPin]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);useEffect(()=>{fetch("/api/auth/staff",{cache:"no-store"}).then(r=>r.json()).then(x=>setStaff(x.users??[])).catch(()=>setError("Cannot reach SwiftTill server."))},[]);async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const r=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,pin})});const x=await r.json();if(!r.ok)throw new Error(x.error??"Sign in failed");router.replace("/pos");router.refresh()}catch(e){setError(e instanceof Error?e.message:"Sign in failed")}finally{setBusy(false)}}return <main className="login-shell"><section className="login-card" aria-labelledby="login-title"><div className="login-brand"><span className="brandMark">S</span><div><strong>SwiftTill</strong><small>Restaurant POS</small></div></div><p className="eyebrow">SECURE SIGN IN</p><h1 id="login-title">Welcome back</h1><p className="muted">Select your staff profile and enter your personal PIN. Access is resolved from server-side roles and permissions.</p><form className="login-form" onSubmit={submit}><label>Staff member<select required value={userId} onChange={e=>setUserId(e.target.value)}><option value="" disabled>{staff.length?"Select your profile":"No active staff found"}</option>{staff.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label><label>Personal PIN<input inputMode="numeric" autoComplete="current-password" type="password" minLength={4} maxLength={12} value={pin} onChange={e=>setPin(e.target.value)} placeholder="••••" required/></label>{error&&<p role="alert" className="errorText">{error}</p>}<button className="primary-action" type="submit" disabled={busy||!userId}>{busy?"Signing in…":"Sign in"}</button></form><div className="security-note"><strong>Protected access</strong><span>Failed attempts are throttled. Sessions are revocable and PIN hashes are never stored in plain text.</span></div></section></main>}

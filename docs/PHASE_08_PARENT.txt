@@ -1,0 +1,3 @@
+Parent artifact: SwiftTill-Phase-07-Void-Refund-Corrections-CERTIFIED.zip
+Parent SHA-256: 9781da15972e1abef5919cc2fc58799e37af84b41bb795252755854f4e90df11
+Continuity rule: Phase 08 was created by extracting and extending this exact certified Phase 07 artifact.

@@ -1,0 +1,13 @@
+import { readFile, readdir } from "node:fs/promises";
+import { join } from "node:path";
+const root=process.cwd();
+const css=await readFile(join(root,"apps/web/app/globals.css"),"utf8");
+for(const x of ["--touch-min: 44px","@media (pointer: coarse)","@media (max-width: 820px)","@media (max-width: 560px)","prefers-reduced-motion","prefers-contrast: more","focus-visible",".skipLink"]) if(!css.includes(x)) throw new Error(`Missing UI contract: ${x}`);
+const pos=await readFile(join(root,"apps/web/app/pos/page.tsx"),"utf8");
+for(const x of ["SkipLink","Ctrl K","F3","F4","Escape","aria-live=\"polite\"","status required"]) if(!pos.includes(x)) throw new Error(`Missing POS accessibility/keyboard contract: ${x}`);
+if(pos.includes("Printer ready")) throw new Error("UI must not fake printer readiness");
+const ui=await readFile(join(root,"packages/ui-core/src/index.ts"),"utf8");
+for(const x of ["MIN_TOUCH_TARGET_PX = 44","PRIMARY_TOUCH_TARGET_PX = 48","resolvePosShortcut","nextGridIndex","shouldReduceMotion"]) if(!ui.includes(x)) throw new Error(`Missing ui-core contract: ${x}`);
+const spec=await readFile(join(root,"docs/MASTER_PRODUCT_SPEC.md"),"utf8");
+if(!spec.includes("Phase 12 implementation lock")) throw new Error("Phase 12 spec lock missing");
+console.log("Phase 12 UI/accessibility source verification passed.");

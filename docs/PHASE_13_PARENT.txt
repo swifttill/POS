@@ -1,0 +1,3 @@
+Parent artifact: SwiftTill-Phase-12-Responsive-Accessibility-CERTIFIED.zip
+Parent SHA-256: 2089a1ef8abb7e774c327e6722582637d41d6e613c230a8fdef014ffc54d4ffa
+Phase 13 was created only after verifying this exact parent artifact.

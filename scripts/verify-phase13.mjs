@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const required=["packages/reliability-core/src/index.ts","packages/reliability-core/test/reliability-core.test.ts","docs/PHASE_13_SECURITY_CONTRACT.md","docs/PHASE_13_PARENT.txt"];
+for(const f of required) if(!fs.existsSync(f)) throw new Error(`missing ${f}`);
+const core=fs.readFileSync("packages/reliability-core/src/index.ts","utf8");
+for(const token of ["assertTenantOwnership","assertOwnedChild","assertRequestActor","assertExpectedVersion","withSerializableRetry","assertReconciled","redactAuditMetadata","safePublicError"]) if(!core.includes(token)) throw new Error(`missing guard ${token}`);
+const schema=fs.readFileSync("prisma/schema.prisma","utf8");
+for(const token of ["version           Int", "idempotencyKey        String                 @unique", "model AuditEvent", "model Refund", "model Shift"]) if(!schema.includes(token)) throw new Error(`schema regression: ${token}`);
+const migration=fs.readFileSync("prisma/migrations/0004_pos_tables_orders/migration.sql","utf8");
+if(!migration.includes("OrderTable_one_active_order_per_table")) throw new Error("table uniqueness regression");
+const print=fs.readFileSync("services/windows-print-service/README.md","utf8");
+if(!/127\.0\.0\.1|loopback/i.test(print)) throw new Error("print service loopback contract missing");
+console.log("Phase 13 security/concurrency source contract: PASS");

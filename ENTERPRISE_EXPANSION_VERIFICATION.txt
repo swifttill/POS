@@ -1,0 +1,15 @@
+SwiftTill v1.0.0-rc.2 — Access + Enterprise Reporting Expansion
+Parent SHA-256: afa495fef9502f213b255c27a2555b7a3c76661805b636bade09bd0b2fb631b6
+Date: 2026-09-01
+
+Existing Phase 00-13 regression suite: PASS (129 tests)
+Enterprise reporting tests: PASS (9 tests)
+Combined automated test count: 138 PASS
+Enterprise source contract checks: PASS (12 checks)
+reporting-advanced-core TypeScript strict check: PASS
+ZIP integrity: checked after packaging
+Next.js production build: NOT EXECUTED SUCCESSFULLY — next dependency is not installed in this isolated environment (`next: not found`).
+Live PostgreSQL migration/integration: NOT CERTIFIED in sandbox.
+
+Important audit finding:
+The parent RC had backend security primitives, role/permission/session schema and basic report-core Item Sales, but no dedicated login page, no dedicated users/roles/access-management page, and no full custom report builder. This expansion adds those source/UI contracts and advanced reporting core.

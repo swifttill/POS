@@ -1,0 +1,2 @@
+Parent release: SwiftTill-v1.0.0-rc.3-Custom-Role-Access-CERTIFIED.zip
+SHA-256: 17331df84d477e579126df29ae20e4368411970269754bbe181bdd18f8faaf9f

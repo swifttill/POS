@@ -1,0 +1,914 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+enum OperationalStatus {
+  OPEN
+  CLOSED
+  VOIDED
+}
+
+enum FinancialStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  PARTIALLY_REFUNDED
+  FULLY_REFUNDED
+}
+
+enum PaymentTransactionType {
+  PAYMENT
+  REVERSAL
+  REFUND
+}
+
+enum Tender {
+  CASH
+  CARD
+  ONLINE
+}
+
+model Company {
+  id             String   @id @default(cuid())
+  name           String
+  legalName      String?
+  address        String?
+  phone          String?
+  email          String?
+  taxLabel       String   @default("GST")
+  currencyCode   String   @default("PKR")
+  timezone       String   @default("Asia/Karachi")
+  taxEnabled     Boolean  @default(false)
+  taxRateBps     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  pinHash   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audits    AuditEvent[] @relation("AuditActor")
+  roles     UserRole[]
+  permissionOverrides UserPermissionOverride[]
+  sessions  Session[]
+  shifts    Shift[]
+}
+
+model Order {
+  id                String             @id @default(cuid())
+  orderNumber       BigInt             @unique
+  type              OrderType
+  operationalStatus OperationalStatus  @default(OPEN)
+  financialStatus   FinancialStatus    @default(UNPAID)
+  currencyCode      String
+  businessDate      DateTime           @db.Date
+  grossSubtotal     BigInt             @default(0)
+  discountTotal     BigInt             @default(0)
+  taxableSubtotal   BigInt             @default(0)
+  taxTotal          BigInt             @default(0)
+  total             BigInt             @default(0)
+  version           Int                @default(1)
+  openedAt          DateTime           @default(now())
+  closedAt          DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  customerId        String?
+  primaryTableId    String?
+  pax               Int?
+  waiterId          String?
+  heldAt            DateTime?
+  heldByUserId      String?
+  combinedIntoOrderId String?
+  combinedAt        DateTime?
+  deliveryAddressSnapshot String?
+  tableNameSnapshot String?
+  customerNameSnapshot String?
+  customerPhoneSnapshot String?
+  customer          Customer?          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  primaryTable      RestaurantTable?   @relation("PrimaryOrderTable", fields: [primaryTableId], references: [id], onDelete: Restrict)
+  tableAssignments  OrderTable[]
+  items             OrderItem[]
+  payments          PaymentTransaction[]
+  refunds           Refund[]
+  orderVoid         OrderVoid?
+  discounts         AppliedDiscount[]
+  billSplits        BillSplit[]
+
+  @@index([businessDate])
+  @@index([operationalStatus])
+  @@index([financialStatus])
+  @@index([type, operationalStatus])
+  @@index([customerId])
+  @@index([primaryTableId])
+  @@index([waiterId, operationalStatus])
+  @@index([heldAt])
+  @@index([combinedIntoOrderId])
+}
+
+
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+
+  @@index([phone])
+}
+
+model RestaurantTable {
+  id           String   @id @default(cuid())
+  name         String
+  capacity     Int      @default(2)
+  section      String?
+  displayOrder Int      @default(0)
+  active       Boolean  @default(true)
+  outOfService Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  primaryOrders Order[] @relation("PrimaryOrderTable")
+  orderLinks   OrderTable[]
+
+  @@index([active, displayOrder])
+}
+
+model OrderTable {
+  id         String          @id @default(cuid())
+  orderId    String
+  tableId    String
+  active     Boolean         @default(true)
+  isPrimary  Boolean         @default(false)
+  attachedAt DateTime        @default(now())
+  releasedAt DateTime?
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  table      RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, active])
+  @@index([tableId, active])
+}
+
+model OrderItem {
+  id                   String   @id @default(cuid())
+  orderId              String
+  menuItemId            String?
+  nameSnapshot          String
+  categoryNameSnapshot  String?
+  variantNameSnapshot   String?
+  unitPriceSnapshot     BigInt
+  quantity              Int
+  lineGross             BigInt
+  lineDiscount          BigInt  @default(0)
+  lineTax               BigInt  @default(0)
+  lineTotal             BigInt
+  note                   String?
+  createdAt              DateTime @default(now())
+  order                  Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  modifiers              OrderItemModifier[]
+  discounts              AppliedDiscount[]
+  discountAllocations    DiscountAllocation[]
+  splitAllocations       BillSplitAllocation[]
+  voids                  OrderItemVoid[]
+  refundAllocations      RefundAllocation[]
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model OrderItemModifier {
+  id                 String @id @default(cuid())
+  orderItemId        String
+  modifierId         String?
+  nameSnapshot       String
+  priceDeltaSnapshot BigInt
+  orderItem          OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@index([orderItemId])
+}
+
+model PaymentTransaction {
+  id                    String                 @id @default(cuid())
+  orderId               String
+  type                  PaymentTransactionType
+  tender                Tender
+  amount                BigInt
+  tenderedAmount        BigInt?
+  changeGiven           BigInt?
+  originalTransactionId String?
+  originalTransaction   PaymentTransaction?  @relation("PaymentCorrectionLink", fields: [originalTransactionId], references: [id], onDelete: Restrict)
+  adjustments           PaymentTransaction[] @relation("PaymentCorrectionLink")
+  splitPartId           String?
+  reference             String?
+  performedByUserId     String
+  approvedByUserId      String?
+  reason                String?
+  idempotencyKey        String                 @unique
+  createdAt             DateTime               @default(now())
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  refundId              String?
+  refund                Refund?                @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  splitPart             BillSplitPart?         @relation(fields: [splitPartId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([originalTransactionId])
+  @@index([refundId])
+  @@index([splitPartId])
+  @@index([createdAt])
+  @@index([tender])
+}
+
+model IdempotencyRecord {
+  id                 String   @id @default(cuid())
+  key                String   @unique
+  operation          String
+  actorUserId        String
+  requestFingerprint String
+  resultReference    String?
+  status             String
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+
+  @@index([expiresAt])
+}
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  action         String
+  entityType     String
+  entityId       String
+  actorUserId    String
+  approverUserId String?
+  reason         String?
+  beforeSnapshot Json?
+  afterSnapshot  Json?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  actor          User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+enum SystemRole {
+  ADMIN
+  MANAGER
+  CASHIER
+  WAITER
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  systemRole  SystemRole?
+  protected   Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  key         String @unique
+  roles       RolePermission[]
+  userOverrides UserPermissionOverride[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  @@id([userId, roleId])
+}
+
+
+enum PermissionOverrideEffect {
+  ALLOW
+  DENY
+}
+
+model UserPermissionOverride {
+  userId       String
+  permissionId String
+  effect       PermissionOverrideEffect
+  reason       String?
+  grantedById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@index([permissionId, effect])
+  @@index([grantedById])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  terminalId String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model ManagerApproval {
+  id            String   @id @default(cuid())
+  action        String
+  entityType    String
+  entityId      String
+  requestedById String
+  approvedById  String
+  contextHash   String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
+  @@index([entityType, entityId])
+  @@index([expiresAt])
+}
+
+model SecurityThrottle {
+  userId         String   @id
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
+  updatedAt      DateTime @updatedAt
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum DiscountScope {
+  ORDER
+  ITEM
+}
+
+enum DiscountSource {
+  PRESET
+  CUSTOM
+  DEAL
+  COMP
+}
+
+enum BillSplitMethod {
+  EVEN
+  ITEMS
+}
+
+enum BillSplitStatus {
+  OPEN
+  REVERTED
+}
+
+enum DealType {
+  PERCENT
+  FIXED
+  BUNDLE
+  TIME_BASED
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  imageUrl     String?
+  active       Boolean    @default(true)
+  displayOrder Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  items        MenuItem[]
+  @@index([active, displayOrder])
+}
+
+model MenuItem {
+  id           String      @id @default(cuid())
+  categoryId   String
+  name         String
+  shortName    String?
+  receiptName  String?
+  description  String?
+  imageUrl     String?
+  basePrice    BigInt
+  active       Boolean     @default(true)
+  availableNow Boolean     @default(true)
+  favorite     Boolean     @default(false)
+  taxable      Boolean     @default(true)
+  displayOrder Int         @default(0)
+  version      Int         @default(1)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  category     Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants     MenuVariant[]
+  modifierLinks MenuItemModifierGroup[]
+  dealLinks    DealEligibleItem[]
+  @@index([categoryId, active, displayOrder])
+  @@index([availableNow])
+}
+
+model MenuVariant {
+  id           String   @id @default(cuid())
+  menuItemId   String
+  name         String
+  price        BigInt
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  menuItem     MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  @@index([menuItemId, active, displayOrder])
+}
+
+model ModifierGroup {
+  id            String   @id @default(cuid())
+  name          String
+  required      Boolean  @default(false)
+  minSelections Int      @default(0)
+  maxSelections Int      @default(1)
+  allowDuplicates Boolean @default(false)
+  active        Boolean  @default(true)
+  displayOrder  Int      @default(0)
+  options       ModifierOption[]
+  itemLinks     MenuItemModifierGroup[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([active, displayOrder])
+}
+
+model ModifierOption {
+  id              String        @id @default(cuid())
+  modifierGroupId String
+  name            String
+  priceDelta      BigInt        @default(0)
+  active          Boolean       @default(true)
+  displayOrder    Int           @default(0)
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  @@index([modifierGroupId, active, displayOrder])
+}
+
+model MenuItemModifierGroup {
+  menuItemId      String
+  modifierGroupId String
+  displayOrder    Int           @default(0)
+  menuItem        MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Restrict)
+  @@id([menuItemId, modifierGroupId])
+}
+
+model Deal {
+  id           String   @id @default(cuid())
+  name         String
+  receiptName  String?
+  type         DealType
+  value        Int
+  active       Boolean  @default(true)
+  stackable    Boolean  @default(false)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  eligibleItems DealEligibleItem[]
+  @@index([active, startsAt, endsAt])
+}
+
+model DealEligibleItem {
+  dealId     String
+  menuItemId String
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  @@id([dealId, menuItemId])
+}
+
+
+model DiscountRule {
+  id                      String          @id @default(cuid())
+  name                    String
+  receiptName             String?
+  type                    DiscountType
+  scope                   DiscountScope
+  value                   Int
+  active                  Boolean         @default(true)
+  stackable               Boolean         @default(false)
+  managerApprovalRequired Boolean         @default(false)
+  startsAt                DateTime?
+  endsAt                  DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  applications            AppliedDiscount[]
+
+  @@index([active, startsAt, endsAt])
+}
+
+model AppliedDiscount {
+  id                 String         @id @default(cuid())
+  orderId            String
+  orderItemId        String?
+  ruleId             String?
+  nameSnapshot       String
+  type               DiscountType
+  scope              DiscountScope
+  source             DiscountSource
+  valueSnapshot      Int
+  amount             BigInt
+  reason             String?
+  appliedByUserId    String
+  approvedByUserId   String?
+  active             Boolean        @default(true)
+  removedAt          DateTime?
+  createdAt          DateTime       @default(now())
+  order              Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItem          OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  rule               DiscountRule?  @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  allocations        DiscountAllocation[]
+
+  @@index([orderId, active])
+  @@index([orderItemId, active])
+  @@index([ruleId])
+  @@index([appliedByUserId, createdAt])
+}
+
+model DiscountAllocation {
+  id                String          @id @default(cuid())
+  appliedDiscountId String
+  orderItemId       String
+  amount            BigInt
+  appliedDiscount   AppliedDiscount @relation(fields: [appliedDiscountId], references: [id], onDelete: Restrict)
+  orderItem         OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@unique([appliedDiscountId, orderItemId])
+  @@index([orderItemId])
+}
+
+model BillSplit {
+  id              String          @id @default(cuid())
+  parentOrderId   String
+  method          BillSplitMethod
+  status          BillSplitStatus @default(OPEN)
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+  revertedAt      DateTime?
+  parentOrder     Order           @relation(fields: [parentOrderId], references: [id], onDelete: Restrict)
+  parts           BillSplitPart[]
+
+  @@index([parentOrderId, status])
+}
+
+model BillSplitPart {
+  id          String        @id @default(cuid())
+  billSplitId String
+  label       String
+  total       BigInt
+  paidAmount  BigInt        @default(0)
+  createdAt   DateTime      @default(now())
+  billSplit   BillSplit     @relation(fields: [billSplitId], references: [id], onDelete: Restrict)
+  allocations BillSplitAllocation[]
+  payments    PaymentTransaction[]
+
+  @@index([billSplitId])
+}
+
+model BillSplitAllocation {
+  id          String        @id @default(cuid())
+  partId      String
+  orderItemId String?
+  amount      BigInt
+  part        BillSplitPart @relation(fields: [partId], references: [id], onDelete: Restrict)
+  orderItem   OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@index([partId])
+  @@index([orderItemId])
+}
+
+
+model OrderVoid {
+  id               String   @id @default(cuid())
+  orderId          String   @unique
+  reason           String
+  performedByUserId String
+  approvedByUserId String?
+  createdAt        DateTime @default(now())
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+}
+
+model OrderItemVoid {
+  id               String    @id @default(cuid())
+  orderItemId      String
+  quantity         Int
+  amount           BigInt
+  reason           String
+  performedByUserId String
+  approvedByUserId String?
+  createdAt        DateTime  @default(now())
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  @@index([orderItemId])
+}
+
+model Refund {
+  id                String   @id @default(cuid())
+  orderId           String
+  amount             BigInt
+  reason             String
+  performedByUserId  String
+  approvedByUserId   String?
+  idempotencyKey     String   @unique
+  createdAt          DateTime @default(now())
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  allocations        RefundAllocation[]
+  transactions       PaymentTransaction[]
+  @@index([orderId, createdAt])
+}
+
+model RefundAllocation {
+  id             String    @id @default(cuid())
+  refundId       String
+  orderItemId    String
+  quantity       Int
+  grossAmount    BigInt
+  discountAmount BigInt
+  taxAmount      BigInt
+  totalAmount    BigInt
+  refund         Refund    @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  orderItem      OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  @@index([refundId])
+  @@index([orderItemId])
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSING
+  CLOSED
+}
+
+enum CashMovementType {
+  CASH_IN
+  CASH_OUT
+  SAFE_DROP
+  ADJUSTMENT
+}
+
+model Terminal {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shifts    Shift[]
+}
+
+model Shift {
+  id                   String      @id @default(cuid())
+  shiftNumber          BigInt      @unique
+  userId               String
+  terminalId           String?
+  status               ShiftStatus @default(OPEN)
+  openedAt             DateTime    @default(now())
+  closedAt             DateTime?
+  openingCash          BigInt
+  countedCash          BigInt?
+  expectedCashSnapshot BigInt?
+  difference           BigInt?
+  closedByUserId       String?
+  approvedByUserId     String?
+  closeNote            String?
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  terminal              Terminal?   @relation(fields: [terminalId], references: [id], onDelete: Restrict)
+  cashMovements         CashMovement[]
+  zReport               ZReportSnapshot?
+
+  @@index([status, openedAt])
+  @@index([userId, status])
+  @@index([terminalId, status])
+}
+
+model CashMovement {
+  id               String           @id @default(cuid())
+  shiftId          String
+  type             CashMovementType
+  amount           BigInt
+  reason           String
+  performedByUserId String
+  approvedByUserId String?
+  createdAt        DateTime         @default(now())
+  shift            Shift            @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  @@index([shiftId, createdAt])
+}
+
+model ZReportSnapshot {
+  id             String   @id @default(cuid())
+  reportNumber   String   @unique
+  shiftId        String   @unique
+  generatedAt    DateTime @default(now())
+  generatedByUserId String
+  openingCash    BigInt
+  cashPayments   BigInt
+  cashRefunds    BigInt
+  cashReversals  BigInt
+  cashIn         BigInt
+  cashOut        BigInt
+  safeDrops      BigInt
+  adjustments    BigInt
+  expectedCash   BigInt
+  countedCash    BigInt
+  difference     BigInt
+  grossSales     BigInt
+  discounts      BigInt
+  netSales       BigInt
+  taxTotal       BigInt
+  refundsTotal   BigInt
+  orderCount     Int
+  idempotencyKey String   @unique
+  snapshotVersion Int     @default(1)
+  shift          Shift    @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  @@index([generatedAt])
+}
+
+enum ReceiptKind {
+  BILL
+  FINAL
+  PARTIAL_PAYMENT
+  DUPLICATE
+  REFUND
+}
+
+enum PrintJobStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model ReceiptDocument {
+  id                    String      @id @default(cuid())
+  receiptNumber         String      @unique
+  kind                  ReceiptKind
+  orderId               String
+  paymentTransactionId  String?
+  refundId              String?
+  originalReceiptId     String?
+  originalReceipt       ReceiptDocument? @relation("ReceiptCopy", fields: [originalReceiptId], references: [id], onDelete: Restrict)
+  copies                 ReceiptDocument[] @relation("ReceiptCopy")
+  currencyCode          String
+  snapshotJson          Json
+  issuedByUserId        String
+  issuedAt              DateTime    @default(now())
+  printJobs             ReceiptPrintJob[]
+
+  @@index([orderId, issuedAt])
+  @@index([paymentTransactionId])
+  @@index([refundId])
+  @@index([originalReceiptId])
+}
+
+model ReceiptPrintJob {
+  id                String         @id @default(cuid())
+  receiptDocumentId String
+  status            PrintJobStatus @default(QUEUED)
+  paperWidthMm      Int            @default(80)
+  copies            Int            @default(1)
+  errorCode         String?
+  queuedAt          DateTime       @default(now())
+  sentAt            DateTime?
+  failedAt          DateTime?
+  receiptDocument   ReceiptDocument @relation(fields: [receiptDocumentId], references: [id], onDelete: Restrict)
+
+  @@index([status, queuedAt])
+  @@index([receiptDocumentId])
+}
+
+enum ReportExportFormat {
+  EXCEL_XML
+  PRINTABLE_PDF
+  THERMAL
+}
+
+enum ReportExportStatus {
+  REQUESTED
+  GENERATED
+  FAILED
+}
+
+model ReportExportJob {
+  id                 String             @id @default(cuid())
+  reportType         String
+  format             ReportExportFormat
+  status             ReportExportStatus @default(REQUESTED)
+  fromBusinessDate   DateTime           @db.Date
+  toBusinessDate     DateTime           @db.Date
+  timezone           String
+  filtersJson        Json?
+  requestedByUserId  String
+  generatedAt        DateTime?
+  errorCode          String?
+  createdAt          DateTime           @default(now())
+
+  @@index([status, createdAt])
+  @@index([reportType, fromBusinessDate, toBusinessDate])
+}
+
+enum PrinterTransport {
+  WINDOWS_USB_RAW
+  WINDOWS_SYSTEM
+}
+
+enum PrinterDeviceStatus {
+  READY
+  OFFLINE
+  ERROR
+  UNKNOWN
+}
+
+model PrinterDevice {
+  id                 String              @id @default(cuid())
+  displayName        String
+  systemPrinterName  String              @unique
+  transport          PrinterTransport    @default(WINDOWS_USB_RAW)
+  paperWidthMm       Int                 @default(80)
+  active             Boolean             @default(true)
+  cashDrawerEnabled  Boolean             @default(false)
+  status             PrinterDeviceStatus @default(UNKNOWN)
+  lastSeenAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  dispatches         LocalPrintDispatch[]
+
+  @@index([active, status])
+}
+
+model LocalPrintDispatch {
+  id                 String       @id @default(cuid())
+  receiptPrintJobId  String?
+  printerDeviceId    String
+  documentKind       String
+  idempotencyKey     String       @unique
+  attempts           Int          @default(0)
+  sent               Boolean      @default(false)
+  errorCode          String?
+  requestedAt        DateTime     @default(now())
+  completedAt        DateTime?
+  printerDevice      PrinterDevice @relation(fields: [printerDeviceId], references: [id], onDelete: Restrict)
+
+  @@index([printerDeviceId, requestedAt])
+  @@index([sent, requestedAt])
+}
+
+// Enterprise reporting expansion: saved custom definitions are immutable-configured views,
+// not cached financial truth. Results are always recomputed from authoritative records.
+model SavedReportDefinition {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  ownerUserId   String
+  visibility    String   @default("PRIVATE")
+  definition    Json
+  favorite      Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerUserId, active])
+  @@index([visibility, active])
+}
+
+model ReportRunAudit {
+  id            String   @id @default(cuid())
+  reportType    String
+  savedReportId String?
+  actorUserId   String
+  fromDate      DateTime @db.Date
+  toDate        DateTime @db.Date
+  filters       Json?
+  rowCount      Int
+  exportFormat  String?
+  createdAt     DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([reportType, createdAt])
+}

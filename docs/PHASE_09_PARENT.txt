@@ -1,0 +1,3 @@
+Parent certified artifact: SwiftTill-Phase-08-Shifts-Cash-Drawer-CERTIFIED.zip
+Parent SHA-256: bcbbdd26e96195a9f33e7f6b8e6aad0680cf51624c4c7ab28d91369354b55872
+Phase 09 was created only after verifying this exact parent artifact.

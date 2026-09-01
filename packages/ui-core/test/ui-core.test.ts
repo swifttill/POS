@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { MIN_TOUCH_TARGET_PX, PRIMARY_TOUCH_TARGET_PX, resolvePosShortcut, nextGridIndex, shouldReduceMotion, clampTouchQuantity } from "../src/index.ts";
+test("touch targets meet practical minimum",()=>{ assert.ok(MIN_TOUCH_TARGET_PX >= 44); assert.ok(PRIMARY_TOUCH_TARGET_PX >= 48); });
+test("POS function shortcuts are deterministic",()=>{ assert.equal(resolvePosShortcut({key:"F2"}),"NEW_ORDER"); assert.equal(resolvePosShortcut({key:"F3"}),"OPEN_ORDERS"); assert.equal(resolvePosShortcut({key:"F4"}),"TABLES"); assert.equal(resolvePosShortcut({key:"F9"}),"PAY"); });
+test("search supports ctrl/cmd k",()=>{ assert.equal(resolvePosShortcut({key:"k",ctrlKey:true}),"SEARCH"); assert.equal(resolvePosShortcut({key:"K",metaKey:true}),"SEARCH"); });
+test("escape is explicit",()=>assert.equal(resolvePosShortcut({key:"Escape"}),"ESCAPE"));
+test("unknown shortcut is ignored",()=>assert.equal(resolvePosShortcut({key:"x"}),null));
+test("grid keyboard navigation stays bounded",()=>{ assert.equal(nextGridIndex(0,"ArrowLeft",4,10),0); assert.equal(nextGridIndex(8,"ArrowDown",4,10),9); assert.equal(nextGridIndex(5,"Home",4,10),0); assert.equal(nextGridIndex(5,"End",4,10),9); });
+test("reduced motion preference is honored",()=>assert.equal(shouldReduceMotion(true),true));
+test("touch quantity is bounded",()=>{ assert.equal(clampTouchQuantity(0),1); assert.equal(clampTouchQuantity(1000),999); assert.equal(clampTouchQuantity(4.8),4); });
