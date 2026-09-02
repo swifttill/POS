@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { requirePermission, effectivePermissions } from "../../../../../lib/auth";
 import { db } from "../../../../../lib/db";
 import { apiError } from "../../../../../lib/api-error";
@@ -13,14 +14,18 @@ export async function POST(req: Request) {
     };
 
     if (!b.userId || !Array.isArray(b.roleIds)) {
-      throw Object.assign(new Error("INVALID_ACCESS_CHANGE"), { status: 422 });
+      throw Object.assign(new Error("INVALID_ACCESS_CHANGE"), {
+        status: 422,
+      });
     }
 
     const actor = await effectivePermissions();
 
     const roles = await db.role.findMany({
       where: {
-        id: { in: b.roleIds },
+        id: {
+          in: b.roleIds,
+        },
         active: true,
       },
       include: {
@@ -44,7 +49,9 @@ export async function POST(req: Request) {
       if (!actor.permissions.has(k)) {
         throw Object.assign(
           new Error("CANNOT_GRANT_PERMISSION:" + k),
-          { status: 403 }
+          {
+            status: 403,
+          }
         );
       }
     }
@@ -77,10 +84,12 @@ export async function POST(req: Request) {
     );
 
     if (activeAdmins === 1 && targetHasAdmin && !targetWillAdmin) {
-      throw Object.assign(new Error("LAST_ADMIN_REQUIRED"), { status: 409 });
+      throw Object.assign(new Error("LAST_ADMIN_REQUIRED"), {
+        status: 409,
+      });
     }
 
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const before = await tx.userRole.findMany({
         where: {
           userId: b.userId,
@@ -98,7 +107,7 @@ export async function POST(req: Request) {
 
       if (b.roleIds.length) {
         await tx.userRole.createMany({
-          data: b.roleIds.map((roleId) => ({
+          data: b.roleIds.map((roleId: string) => ({
             userId: b.userId,
             roleId,
           })),
@@ -120,7 +129,9 @@ export async function POST(req: Request) {
       });
     });
 
-    return json({ ok: true });
+    return json({
+      ok: true,
+    });
   } catch (e) {
     return apiError(e);
   }
