@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { requirePermission, effectivePermissions } from "../../../../../lib/auth";
 import { db } from "../../../../../lib/db";
 import { apiError } from "../../../../../lib/api-error";
@@ -23,9 +22,7 @@ export async function POST(req: Request) {
 
     const roles = await db.role.findMany({
       where: {
-        id: {
-          in: b.roleIds,
-        },
+        id: { in: b.roleIds },
         active: true,
       },
       include: {
@@ -37,11 +34,12 @@ export async function POST(req: Request) {
       },
     });
 
-    const grants = new Set(
-      roles.flatMap((r: (typeof roles)[number]) =>
-        r.permissions.map(
-          (p: (typeof r.permissions)[number]) => p.permission.key
-        )
+    type RoleWithPermissions = (typeof roles)[number];
+    type RolePermission = RoleWithPermissions["permissions"][number];
+
+    const grants = new Set<string>(
+      roles.flatMap((r: RoleWithPermissions) =>
+        r.permissions.map((p: RolePermission) => p.permission.key)
       )
     );
 
@@ -49,9 +47,7 @@ export async function POST(req: Request) {
       if (!actor.permissions.has(k)) {
         throw Object.assign(
           new Error("CANNOT_GRANT_PERMISSION:" + k),
-          {
-            status: 403,
-          }
+          { status: 403 }
         );
       }
     }
@@ -80,7 +76,7 @@ export async function POST(req: Request) {
       })) > 0;
 
     const targetWillAdmin = roles.some(
-      (r: (typeof roles)[number]) => r.systemRole === "ADMIN"
+      (r: RoleWithPermissions) => r.systemRole === "ADMIN"
     );
 
     if (activeAdmins === 1 && targetHasAdmin && !targetWillAdmin) {
@@ -89,7 +85,12 @@ export async function POST(req: Request) {
       });
     }
 
-    await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    type TransactionClient = Omit<
+      typeof db,
+      "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+    >;
+
+    await db.$transaction(async (tx: TransactionClient) => {
       const before = await tx.userRole.findMany({
         where: {
           userId: b.userId,
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
         },
       });
 
-      if (b.roleIds.length) {
+      if (b.roleIds.length > 0) {
         await tx.userRole.createMany({
           data: b.roleIds.map((roleId: string) => ({
             userId: b.userId,
@@ -129,9 +130,7 @@ export async function POST(req: Request) {
       });
     });
 
-    return json({
-      ok: true,
-    });
+    return json({ ok: true });
   } catch (e) {
     return apiError(e);
   }
