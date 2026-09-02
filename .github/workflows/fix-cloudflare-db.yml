@@ -1,0 +1,74 @@
+name: Audit Cloudflare DB Usage
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Audit shared Prisma DB imports
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "SwiftTill Cloudflare DB Usage Audit"
+          echo "======================================"
+          echo
+
+          echo "1. Files importing lib/db:"
+          grep -RIl \
+            --include='*.ts' \
+            --include='*.tsx' \
+            'from .*lib/db' \
+            apps/web || true
+
+          echo
+          echo "2. Direct imports of db:"
+          grep -RIn \
+            --include='*.ts' \
+            --include='*.tsx' \
+            'import.*{.*db.*}.*lib/db' \
+            apps/web || true
+
+          echo
+          echo "3. PrismaClient usage:"
+          grep -RIn \
+            --include='*.ts' \
+            --include='*.tsx' \
+            --include='*.mjs' \
+            'PrismaClient' \
+            apps/web || true
+
+          echo
+          echo "4. PrismaNeon usage:"
+          grep -RIn \
+            --include='*.ts' \
+            --include='*.tsx' \
+            --include='*.mjs' \
+            'PrismaNeon' \
+            apps/web || true
+
+          echo
+          echo "5. globalForPrisma usage:"
+          grep -RIn \
+            --include='*.ts' \
+            --include='*.tsx' \
+            'globalForPrisma' \
+            apps/web || true
+
+          echo
+          echo "6. Exact current db.ts:"
+          echo "--------------------------------------"
+          cat apps/web/lib/db.ts
+          echo
+          echo "--------------------------------------"
+
+          echo
+          echo "AUDIT COMPLETE - NO SOURCE FILES MODIFIED"
