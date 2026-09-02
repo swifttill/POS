@@ -1,0 +1,103 @@
+name: Reset SwiftTill Admin PIN
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reset-admin-pin:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ADMIN_RESET_PIN: ${{ secrets.ADMIN_RESET_PIN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm run prisma:generate
+
+      - name: Reset Admin PIN
+        working-directory: apps/web
+        run: |
+          node --input-type=module <<'NODE'
+          import { randomBytes, scryptSync } from "node:crypto";
+          import { PrismaClient } from "@prisma/client";
+          import { PrismaNeon } from "@prisma/adapter-neon";
+
+          const pin = process.env.ADMIN_RESET_PIN ?? "";
+          const connectionString = process.env.DATABASE_URL ?? "";
+
+          if (!/^\d{4,12}$/.test(pin)) {
+            throw new Error("ADMIN_RESET_PIN must contain 4-12 digits.");
+          }
+
+          if (!connectionString) {
+            throw new Error("DATABASE_URL is not configured.");
+          }
+
+          const salt = randomBytes(16);
+          const pinHash =
+            `scrypt$${salt.toString("hex")}$${scryptSync(pin, salt, 32).toString("hex")}`;
+
+          const adapter = new PrismaNeon({ connectionString });
+          const db = new PrismaClient({ adapter });
+
+          try {
+            const result = await db.$transaction(async (tx) => {
+              const updated = await tx.user.updateMany({
+                where: {
+                  id: "user-admin",
+                  name: "Admin",
+                  active: true
+                },
+                data: { pinHash }
+              });
+
+              if (updated.count !== 1) {
+                throw new Error(
+                  `Admin reset aborted: expected exactly 1 active Admin row, found ${updated.count}.`
+                );
+              }
+
+              const revoked = await tx.session.updateMany({
+                where: {
+                  userId: "user-admin",
+                  revokedAt: null
+                },
+                data: {
+                  revokedAt: new Date()
+                }
+              });
+
+              return {
+                updated: updated.count,
+                revoked: revoked.count
+              };
+            });
+
+            console.log(
+              `Admin PIN reset completed. Updated users: ${result.updated}. Revoked sessions: ${result.revoked}.`
+            );
+          } finally {
+            await db.$disconnect();
+          }
+          NODE
