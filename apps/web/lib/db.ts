@@ -1,30 +1,41 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 
-const connectionString = process.env.DATABASE_URL;
+function createDbClient() {
+  const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not configured");
-}
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not configured");
+  }
 
-const adapter = new PrismaNeon({
-  connectionString,
-});
+  const adapter = new PrismaNeon({
+    connectionString,
+  });
 
-const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-};
-
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+  return new PrismaClient({
     adapter,
     log:
       process.env.NODE_ENV === "development"
         ? ["error", "warn"]
         : ["error"],
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
 }
+
+/**
+ * Cloudflare Workers reuse isolates across requests.
+ * Never retain Prisma/Neon I/O state globally.
+ *
+ * Existing routes can continue importing `db`, but each Prisma
+ * operation resolves against a fresh client created inside the
+ * active request context.
+ */
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = createDbClient();
+    const value = Reflect.get(client, property, client);
+
+    return typeof value === "function"
+      ? value.bind(client)
+      : value;
+  },
+});
